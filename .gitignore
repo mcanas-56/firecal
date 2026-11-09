@@ -17,3 +17,4 @@ venv/
 
 # Streamlit secrets
 .streamlit/secrets.toml
+.claude/
