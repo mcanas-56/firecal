@@ -15,7 +15,9 @@ If `data/` has no CSVs after setup, offer to download the NASA FIRMS practice se
 
 ## Layout
 
-- `src/` app and data code; `src/app.py` is the Streamlit entry point, `src/load_data.py` loads and cleans FIRMS CSVs (US-01), `src/harmonize.py` builds the harmonized monthly record (US-02), `src/app_data.py` loads or rebuilds it for the app (US-09), `src/season_summary.py` fire-season summary (US-05), `src/calendar_view.py` month x year calendar HTML (US-04a), `src/palette.py` calendar colours (T-03)
+- `web/` the FireCal page (T-05): `index.html`, `styles.css`, `js/` split by feature (`state`, `calendar`, `globe`, `timeline`, `theme`, `nav`, `main`), bundled `vendor/d3.min.js` and `data/land.geojson`, and `data/archive.json` (date → area → {total, frp, points: [[lat, lon, frp]]}). Keep it offline apart from the web fonts
+- `design/prototype/` the firecal-demo prototype and `design/screenshots/`: the design source of truth. Port its CSS, markup and D3 code rather than redrawing from screenshots
+- `src/` data code and servers; `src/serve.py` serves `web/` on localhost (standard library only), `src/app.py` is the Streamlit data view, `src/load_data.py` loads and cleans FIRMS CSVs (US-01), `src/harmonize.py` builds the harmonized monthly record (US-02), `src/app_data.py` loads or rebuilds it for the app (US-09), `src/season_summary.py` fire-season summary (US-05), `src/calendar_view.py` month x year calendar HTML (US-04a), `src/palette.py` calendar colours (T-03)
 - `docs/harmonization.md` method note for US-02: read before changing the harmonization
 - `data/` raw NASA FIRMS CSVs, local only (gitignored)
 - `notebooks/` exploration
@@ -26,7 +28,8 @@ If `data/` has no CSVs after setup, offer to download the NASA FIRMS practice se
 
 ## Running
 
-- App: activate `.venv`, then `streamlit run src/app.py` (http://localhost:8501).
+- App: `python -m src.serve` (http://localhost:8000, opens the browser; next free port if taken).
+- Streamlit data views (harmonized record, season summary, month x year calendar): activate `.venv`, then `streamlit run src/app.py` (http://localhost:8501).
 - Everything runs locally. No cloud hosting, no external API calls from the app.
 
 ## Data notes

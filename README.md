@@ -7,7 +7,9 @@ A fire-season calendar built from NASA FIRMS MODIS and VIIRS hotspot data — Te
 ```
 firecal/
 ├── data/        Raw NASA FIRMS CSVs (gitignored — download locally, never commit)
-├── src/         App and data-processing code (entry point: src/app.py; colours in src/palette.py)
+├── web/         The FireCal page (HTML, CSS, js/ by feature, bundled D3 and land map, data/archive.json)
+├── src/         Data-processing code, the local server (src/serve.py) and the Streamlit data views (src/app.py)
+├── design/      The firecal-demo prototype and its screenshots: the design source of truth (T-05)
 ├── docs/        Design notes (calendar wireframe and palette: docs/t-03-calendar-design.md)
 ├── notebooks/   Exploration notebooks
 ├── tests/       Tests
@@ -71,22 +73,33 @@ The files are public ([FIRMS country yearly data](https://firms.modaps.eosdis.na
 
 ## Run the app
 
-With the virtual environment active, from the repo root:
+From the repo root (the virtual environment doesn't need to be active; plain `python3` works too):
+
+```bash
+python -m src.serve
+```
+
+It serves `web/` at http://localhost:8000 and opens your browser (if 8000 is taken it uses the next free port and prints it). Stop it with `Ctrl+C`. `--port 8080` picks another port, `--no-browser` skips opening a tab.
+
+The page is a port of the firecal-demo prototype in `design/prototype/` (T-05): daily fire-activity calendar with a year selector, interactive globe, Days/Weeks/Months timeline, dark and light themes, and a Report a fire page (layout only: it sends and saves nothing). Everything runs offline except the two web fonts, which fall back to system fonts. The page reads `web/data/archive.json` (date → area → `{total, frp, points: [[lat, lon, frp]]}`); for now that is the prototype's file (VIIRS S-NPP, 2022–2023, up to 60 sampled points per day). Later tasks (US-02, US-04, US-10) write the same format from the real harmonized data.
+
+### Streamlit data views
+
+The harmonized monthly record, season summary and month × year calendar from US-02 to US-05 still run as a Streamlit page while they move into the web front end:
 
 ```bash
 streamlit run src/app.py
 ```
 
-The app opens in your browser at http://localhost:8501. Stop it with `Ctrl+C` in the terminal.
+It opens at http://localhost:8501 and rebuilds the harmonized record from `data/*.csv` on first run or when the files change.
 
-On first run (or after you add or change files in `data/`) the app rebuilds the harmonized monthly record from `data/*.csv` itself, which takes a few seconds; you don't need to run `python -m src.harmonize` first. With no data it shows the download command. The page follows the T-03 layout: season summary, monthly activity for Canada (placeholder until the US-04 calendar) and slots for the tasks still to come.
+Each time you open a new terminal, activate the environment again (`source .venv/bin/activate`) before running Streamlit.
 
-Each time you open a new terminal, activate the environment again (`source .venv/bin/activate`) before running the app.
-
-Tested setup: Python 3.13.1, pandas 3.1.1, streamlit 1.67.0 (macOS). If the page says "If you can see this, your setup works.", you're ready.
+Tested setup: Python 3.13.1, pandas 3.1.1, streamlit 1.67.0 (macOS).
 
 ### Troubleshooting
 
+- The page shows "Archive could not load" → it was opened as a file; start it with `python -m src.serve` instead.
 - `streamlit: command not found` → the virtual environment isn't active; run `source .venv/bin/activate`.
 - `Port 8501 is already in use` → another Streamlit is running; stop it, or run `streamlit run src/app.py --server.port 8502`.
 - `python3: command not found` (Windows) → use `python` or `py` instead of `python3`.

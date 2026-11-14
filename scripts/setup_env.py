@@ -6,7 +6,7 @@ which find a Python 3.11+ and Git first. It can also be run directly:
     python3 scripts/setup_env.py   # Windows: py -3 scripts/setup_env.py
 
 It checks Git and Python, creates .venv, installs requirements.txt, smoke-tests
-the imports and starts the app headless for a few seconds. Standard library
+the imports and starts the app (python -m src.serve) for a few seconds. Standard library
 only, so it runs before anything is installed. Output is plain ASCII so it
 prints the same on macOS and Windows terminals.
 """
@@ -26,7 +26,6 @@ ROOT = Path(__file__).resolve().parent.parent
 VENV = ROOT / ".venv"
 MIN_PYTHON = (3, 11)
 IMPORTS = ["pandas", "streamlit", "pydeck"]  # pydeck ships with streamlit; it draws the hotspot map
-APP = ROOT / "src" / "app.py"
 
 # step name -> Machine readiness column in the team doc
 READINESS = {
@@ -121,39 +120,32 @@ def free_port() -> int:
         return s.getsockname()[1]
 
 
-def app_starts(timeout: float = 45.0) -> bool:
-    if not APP.exists():
-        record("App starts", "SKIP", "src/app.py not found yet")
+def app_starts(timeout: float = 20.0) -> bool:
+    """Start `python -m src.serve` headless, fetch the page and its data, then stop it."""
+    if not (ROOT / "src" / "serve.py").exists() or not (ROOT / "web" / "index.html").exists():
+        record("App starts", "SKIP", "src/serve.py or web/index.html not found yet")
         return True
-    # The server's health check answers even when the script crashes, so run the script once first.
-    script_check = (
-        "import sys\n"
-        "from streamlit.testing.v1 import AppTest\n"
-        f"at = AppTest.from_file({str(APP)!r}, default_timeout=60).run()\n"
-        "errs = [e.message for e in at.exception]\n"
-        "print(errs[0] if errs else 'ok'); sys.exit(1 if errs else 0)\n"
-    )
-    proc = subprocess.run([str(venv_python()), "-c", script_check], cwd=ROOT, capture_output=True, text=True)
-    if proc.returncode != 0:
-        detail = (proc.stdout.strip() or proc.stderr.strip().splitlines()[-1:] or ["unknown error"])
-        record("App starts", "FAIL", f"src/app.py raised an error: {detail if isinstance(detail, str) else detail[0]}")
-        return False
     port = free_port()
-    cmd =[str(venv_python()), "-m", "streamlit", "run", str(APP), "--server.headless", "true",
-           "--server.port", str(port), "--browser.gatherUsageStats", "false"]
+    cmd = [str(venv_python()), "-m", "src.serve", "--port", str(port), "--no-browser"]
     proc = subprocess.Popen(cmd, cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-    url = f"http://localhost:{port}/_stcore/health"
-    ok = False
+    base = f"http://127.0.0.1:{port}"
+    ok, problem = False, ""
     deadline = time.time() + timeout
     try:
         while time.time() < deadline and proc.poll() is None:
             try:
-                with urllib.request.urlopen(url, timeout=2) as r:
-                    if r.status == 200:
-                        ok = True
-                        break
-            except OSError:
-                time.sleep(1)
+                with urllib.request.urlopen(base + "/", timeout=2) as r:
+                    page = r.read().decode("utf-8", "replace")
+                if "FireCal" not in page:
+                    problem = "the page did not look like FireCal"
+                    break
+                with urllib.request.urlopen(base + "/data/archive.json", timeout=5) as r:
+                    r.read(1)
+                ok = True
+                break
+            except OSError as exc:
+                problem = str(exc)
+                time.sleep(0.5)
     finally:
         proc.terminate()
         try:
@@ -162,10 +154,10 @@ def app_starts(timeout: float = 45.0) -> bool:
             proc.kill()
             out, _ = proc.communicate()
     if ok:
-        record("App starts", "PASS", f"streamlit answered on port {port}, then stopped")
+        record("App starts", "PASS", f"python -m src.serve answered on port {port}, then stopped")
     else:
         last = (out or "").strip().splitlines()[-3:]
-        record("App starts", "FAIL", " | ".join(last) or f"no answer on port {port} within {int(timeout)}s")
+        record("App starts", "FAIL", " | ".join(last) or problem or f"no answer on port {port} within {int(timeout)}s")
     return ok
 
 
@@ -201,9 +193,9 @@ def summary() -> int:
         return 1
     print("\nRESULT: PASS. Start the app with:")
     if sys.platform == "win32":
-        print("  .venv\\Scripts\\activate  then  streamlit run src/app.py")
+        print("  .venv\\Scripts\\activate  then  python -m src.serve")
     else:
-        print("  source .venv/bin/activate  then  streamlit run src/app.py")
+        print("  source .venv/bin/activate  then  python -m src.serve")
     return 0
 
 
