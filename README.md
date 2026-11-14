@@ -206,3 +206,15 @@ raise descriptive errors. Only the selected area's records are evaluated.
 These are descriptive activity estimates, not forecasts or burned-area estimates.
 The practice data covers just 2022–2023, so results are not a long-term climate
 baseline. Teammate review and testing on a second laptop remain required.
+
+## Calendar view (US-04a)
+
+`src/calendar_view.py` draws the month × year calendar from the T-03 wireframe as HTML: one row per year (newest first), one column per month, cells coloured with `src/palette.py` on its log scale, peak cells labelled (`16.6k`), a tooltip on every cell, a legend, and optional outlines for unusual years.
+
+```python
+from src.calendar_view import calendar_html, sample_monthly
+
+st.html(calendar_html(sample_monthly('Canada'), flags={2023: 'high', 2020: 'low'}))
+```
+
+The app currently shows it with **sample values** (`sample_monthly`) so the team can agree the layout. US-04 passes the real harmonized rows for the selected area instead: `calendar_html(monthly[monthly.area == area])`.
