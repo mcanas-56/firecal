@@ -124,9 +124,70 @@ class HarmonizeTests(unittest.TestCase):
         table, _ = harmonize(frame(rows))
         self.assertEqual(list(table.columns),
                          ['area', 'year', 'month', 'modis_cell_days', 'viirs_cell_days',
-                          'modis_scaled', 'harmonized', 'source', 'factor'])
+                          'modis_scaled', 'harmonized', 'source', 'factor', 'viirs_gap_days'])
         self.assertFalse(table.duplicated(['area', 'year', 'month']).any())
         self.assertEqual(len(table), 24)  # 2 areas x 12 months
+
+
+
+def overlap_year(areas=('Canada', 'Argentina')):
+    """2022, every month: MODIS 1 cell-day and VIIRS 3 on the 1st (factor 3) in each area."""
+    rows = []
+    for area in areas:
+        lat = 45.05 if area == 'Canada' else -35.05
+        for m in range(1, 13):
+            d = f'2022-{m:02d}-01'
+            rows.append(det(d, lat=lat, area=area))
+            for k in range(3):
+                rows.append(det(d, lat=lat + 1 + k, area=area, instrument='VIIRS', satellite='N'))
+    return rows
+
+
+class GapTests(unittest.TestCase):
+    def test_viirs_gap_is_left_out_of_fit_and_filled_with_modis(self):
+        rows = overlap_year()
+        # 5 Aug: MODIS sees 2 cells in Canada, VIIRS records nothing anywhere -> VIIRS gap
+        rows += [det('2022-08-05', lat=50.05), det('2022-08-05', lat=51.05)]
+        table, fits = harmonize(frame(rows))
+        gaps = table.attrs['gaps']
+        self.assertEqual(list(zip(gaps.sensor, gaps.date)), [('viirs', pd.Timestamp('2022-08-05'))])
+        self.assertAlmostEqual(fits.set_index('area').loc['Canada'].factor, 3.0)  # gap day not in fit
+        aug = table[(table.area == 'Canada') & (table.month == 8)].iloc[0]
+        self.assertEqual(aug.viirs_cell_days, 3)                 # raw count unchanged
+        self.assertAlmostEqual(aug.harmonized, 3 + 2 * 3.0)      # + MODIS x factor on the gap day
+        self.assertEqual(aug.source, 'viirs+modis_gap_fill')
+        self.assertEqual(aug.viirs_gap_days, 1)
+        arg = table[(table.area == 'Argentina') & (table.month == 8)].iloc[0]
+        self.assertEqual(arg.harmonized, 3)                      # nothing to fill there
+        self.assertEqual(arg.viirs_gap_days, 1)
+
+    def test_quiet_day_for_both_sensors_is_not_a_gap(self):
+        table, _ = harmonize(frame(overlap_year()))
+        self.assertEqual(len(table.attrs['gaps']), 0)
+        self.assertTrue((table.source == 'viirs').all())
+        self.assertTrue((table.viirs_gap_days == 0).all())
+
+    def test_gap_detected_with_a_single_area(self):
+        rows = overlap_year(areas=('Canada',)) + [det('2022-08-05', lat=50.05)]
+        table, _ = harmonize(frame(rows))
+        self.assertEqual(list(table.attrs['gaps'].sensor), ['viirs'])
+
+    def test_viirs_in_one_area_means_no_gap(self):
+        rows = overlap_year() + [det('2022-08-05', lat=50.05),
+                                 det('2022-08-05', lat=-30.05, area='Argentina', instrument='VIIRS', satellite='N')]
+        table, _ = harmonize(frame(rows))
+        self.assertEqual(len(table.attrs['gaps']), 0)
+
+    def test_modis_gap_is_left_out_of_fit_but_not_filled(self):
+        rows = overlap_year()
+        # 5 Aug: VIIRS sees 10 cells in Canada, MODIS nothing -> MODIS gap; would skew the fit
+        rows += [det('2022-08-05', lat=50.05 + k * 0.2, instrument='VIIRS', satellite='N') for k in range(10)]
+        table, fits = harmonize(frame(rows))
+        self.assertEqual(list(table.attrs['gaps'].sensor), ['modis'])
+        self.assertAlmostEqual(fits.set_index('area').loc['Canada'].factor, 3.0)
+        aug = table[(table.area == 'Canada') & (table.month == 8)].iloc[0]
+        self.assertEqual(aug.harmonized, 13)                     # VIIRS as recorded
+        self.assertEqual(aug.source, 'viirs')
 
 
 if __name__ == '__main__':

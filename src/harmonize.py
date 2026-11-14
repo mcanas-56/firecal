@@ -7,9 +7,12 @@ Method (see docs/harmonization.md):
    count each cell at most once per day per sensor.
 3. Aggregate by month: cell-days per area, sensor, year and month; months with no fires
    are 0, and months a sensor has no data file for are missing (NA), not 0.
-4. Calibrate on the overlap: per area, VIIRS ~= factor x MODIS (least squares through
-   the origin) over months where both sensors have data.
-5. Build the harmonized series: VIIRS where it exists, otherwise MODIS x factor.
+4. Find satellite gaps: days one sensor recorded nothing in any area it covers while the
+   other sensor saw fires there (e.g. Suomi NPP was offline 27 Jul-10 Aug 2022).
+5. Calibrate on the overlap: per area, VIIRS ~= factor x MODIS (least squares through
+   the origin) over months where both sensors have data, leaving out gap days.
+6. Build the harmonized series: VIIRS where it exists, with VIIRS gap days filled by
+   that day's MODIS x factor; otherwise MODIS x factor.
 
 Rebuild everything with:  python -m src.harmonize data/*.csv
 """
@@ -33,7 +36,7 @@ MATCHED_SATELLITES = {
 }
 TERRA = 'TERRA'
 OUTPUT_COLUMNS = ['area', 'year', 'month', 'modis_cell_days', 'viirs_cell_days',
-                  'modis_scaled', 'harmonized', 'source', 'factor']
+                  'modis_scaled', 'harmonized', 'source', 'factor', 'viirs_gap_days']
 FILE_PATTERN = re.compile(r'^(?P<sensor>modis|viirs)[^_]*_(?P<year>\d{4})_', re.IGNORECASE)
 
 
@@ -72,15 +75,10 @@ def _coverage(df: pd.DataFrame) -> pd.DataFrame:
     return pd.concat(parts, ignore_index=True).drop_duplicates()
 
 
-def monthly_cell_days(df: pd.DataFrame, grid: float = 0.1, include_terra: bool = False) -> pd.DataFrame:
-    """Steps 1-3. Long table: area, sensor, year, month, cell_days (Int64; NA = no data).
-
-    Takes cleaned detections from src.load_data.load_hotspots.
-    """
+def _cell_days(df: pd.DataFrame, grid: float, include_terra: bool) -> pd.DataFrame:
+    """Steps 1-2. One row per area, sensor, date and grid cell with a detection."""
     if grid <= 0:
         raise ValueError('grid must be positive (degrees)')
-    coverage = _coverage(df)
-
     sensor = _sensor(df['instrument'])
     satellite = df['satellite'].astype('string').str.strip().str.upper()
     keep = ((sensor.eq('modis') & satellite.isin(MATCHED_SATELLITES['modis'] | ({TERRA} if include_terra else set())))
@@ -92,10 +90,40 @@ def monthly_cell_days(df: pd.DataFrame, grid: float = 0.1, include_terra: bool =
         'ci': np.floor(df['latitude'].astype(float) / grid + 1e-9).astype('int64'),
         'cj': np.floor(df['longitude'].astype(float) / grid + 1e-9).astype('int64'),
     })[keep.fillna(False)]
-    cell_days = d.drop_duplicates(['area', 'sensor', 'date', 'ci', 'cj'])
-    counts = (cell_days.assign(period=cell_days['date'].dt.to_period('M'))
-              .groupby(['area', 'sensor', 'period']).size().rename('cell_days'))
+    return d.drop_duplicates(['area', 'sensor', 'date', 'ci', 'cj'])
 
+
+def sensor_gaps(cells: pd.DataFrame, coverage: pd.DataFrame) -> pd.DataFrame:
+    """Step 4. Days a sensor recorded nothing while the other sensor saw fires.
+
+    A day is a gap for sensor S when every area S covers that month has zero S detections
+    and the other sensor has detections in at least one of those areas the same day.
+    VIIRS sees more fires than MODIS, so a whole day of MODIS fires with no VIIRS at all
+    means VIIRS was not recording, not that there were no fires. Returns sensor, date.
+    """
+    per_day = cells.groupby(['sensor', 'date', 'area']).size()
+    has = set(per_day.index)
+    covered = {(r.sensor, r.period, r.area) for r in coverage.itertuples(index=False)}
+    out = []
+    for s, other in (('viirs', 'modis'), ('modis', 'viirs')):
+        dates = sorted({d for (sen, d, _) in has if sen == other})
+        for d in dates:
+            period = d.to_period('M')
+            areas = [a for (sen, p, a) in covered if sen == s and p == period]
+            both = [a for a in areas if (other, period, a) in covered]
+            if not both:
+                continue
+            if any((s, d, a) in has for a in areas):
+                continue
+            if any((other, d, a) in has for a in both):
+                out.append((s, d))
+    return pd.DataFrame(out, columns=['sensor', 'date'])
+
+
+def _monthly(cells: pd.DataFrame, coverage: pd.DataFrame) -> pd.DataFrame:
+    """Step 3. Long table: area, sensor, year, month, cell_days (Int64; NA = no data)."""
+    counts = (cells.assign(period=cells['date'].dt.to_period('M'))
+              .groupby(['area', 'sensor', 'period']).size().rename('cell_days'))
     # Every month of every year an area has data for, for both sensors.
     rows = []
     for area, grp in coverage.groupby('area'):
@@ -115,6 +143,27 @@ def monthly_cell_days(df: pd.DataFrame, grid: float = 0.1, include_terra: bool =
     out['month'] = [p.month for p in out['period']]
     return out[['area', 'sensor', 'year', 'month', 'cell_days']].sort_values(
         ['area', 'sensor', 'year', 'month'], ignore_index=True)
+
+
+def monthly_cell_days(df: pd.DataFrame, grid: float = 0.1, include_terra: bool = False) -> pd.DataFrame:
+    """Steps 1-3. Long table: area, sensor, year, month, cell_days (Int64; NA = no data).
+
+    Takes cleaned detections from src.load_data.load_hotspots. Raw counts: satellite
+    gaps are not filled here (see harmonize).
+    """
+    return _monthly(_cell_days(df, grid, include_terra), _coverage(df))
+
+
+def _wide(long: pd.DataFrame) -> pd.DataFrame:
+    wide = (long.pivot_table(index=['area', 'year', 'month'], columns='sensor',
+                             values='cell_days', aggfunc='first', dropna=False)
+            .reindex(columns=['modis', 'viirs'])
+            .rename(columns={'modis': 'modis_cell_days', 'viirs': 'viirs_cell_days'})
+            .reset_index())
+    wide.columns.name = None
+    for col in ('modis_cell_days', 'viirs_cell_days'):
+        wide[col] = wide[col].astype('Int64')
+    return wide
 
 
 def fit_factors(wide: pd.DataFrame) -> pd.DataFrame:
@@ -149,24 +198,51 @@ def fit_factors(wide: pd.DataFrame) -> pd.DataFrame:
 
 
 def harmonize(df: pd.DataFrame, grid: float = 0.1, include_terra: bool = False) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Steps 1-5. Returns (monthly table with OUTPUT_COLUMNS, per-area fit table)."""
-    long = monthly_cell_days(df, grid=grid, include_terra=include_terra)
-    wide = (long.pivot_table(index=['area', 'year', 'month'], columns='sensor',
-                             values='cell_days', aggfunc='first', dropna=False)
-            .reindex(columns=['modis', 'viirs'])
-            .rename(columns={'modis': 'modis_cell_days', 'viirs': 'viirs_cell_days'})
-            .reset_index())
-    wide.columns.name = None
-    for col in ('modis_cell_days', 'viirs_cell_days'):
-        wide[col] = wide[col].astype('Int64')
-    fits = fit_factors(wide)
+    """Steps 1-6. Returns (monthly table with OUTPUT_COLUMNS, per-area fit table).
+
+    The fit table also has gap_days: the satellite-gap days left out of that area's fit.
+    table.attrs['gaps'] lists every gap day (sensor, date).
+    """
+    cells = _cell_days(df, grid, include_terra)
+    coverage = _coverage(df)
+    gaps = sensor_gaps(cells, coverage)
+    gap_dates = set(gaps['date'])
+    viirs_gap_dates = set(gaps.loc[gaps['sensor'] == 'viirs', 'date'])
+
+    wide = _wide(_monthly(cells, coverage))
+    # Fit on days both sensors were recording.
+    fit_cells = cells[~cells['date'].isin(gap_dates)]
+    fits = fit_factors(_wide(_monthly(fit_cells, coverage)))
+    fits['gap_days'] = len(gap_dates)
     wide['factor'] = wide['area'].map(fits.set_index('area')['factor'])
     wide['modis_scaled'] = wide['modis_cell_days'].astype('Float64') * wide['factor']
+
+    # MODIS cell-days on VIIRS gap days, per area-month, to fill those days.
+    fill = cells[(cells['sensor'] == 'modis') & cells['date'].isin(viirs_gap_dates)]
+    fill = (fill.assign(year=fill['date'].dt.year, month=fill['date'].dt.month)
+            .groupby(['area', 'year', 'month']).size().rename('modis_on_gaps'))
+    gap_counts = pd.Series([1] * len(viirs_gap_dates), dtype='int64',
+                           index=pd.MultiIndex.from_tuples([(d.year, d.month) for d in viirs_gap_dates],
+                                                           names=['year', 'month'])) if viirs_gap_dates else None
+    wide = wide.join(fill, on=['area', 'year', 'month'])
+    wide['modis_on_gaps'] = wide['modis_on_gaps'].fillna(0)
+    if gap_counts is not None:
+        per_month = gap_counts.groupby(level=['year', 'month']).sum().rename('viirs_gap_days')
+        wide = wide.join(per_month, on=['year', 'month'])
+    else:
+        wide['viirs_gap_days'] = 0
     has_viirs = wide['viirs_cell_days'].notna()
+    wide['viirs_gap_days'] = wide['viirs_gap_days'].fillna(0).astype('int64').where(has_viirs, 0)
+
     has_scaled = wide['modis_scaled'].notna()
-    wide['harmonized'] = wide['viirs_cell_days'].astype('Float64').where(has_viirs, wide['modis_scaled'])
-    wide['source'] = np.where(has_viirs, 'viirs', np.where(has_scaled, 'modis_scaled', 'none'))
-    return wide[OUTPUT_COLUMNS].sort_values(['area', 'year', 'month'], ignore_index=True), fits
+    filled = wide['viirs_cell_days'].astype('Float64') + (wide['modis_on_gaps'] * wide['factor']).fillna(0)
+    wide['harmonized'] = filled.where(has_viirs, wide['modis_scaled'])
+    is_filled = has_viirs & wide['modis_on_gaps'].gt(0) & wide['factor'].notna()
+    wide['source'] = np.where(is_filled, 'viirs+modis_gap_fill',
+                              np.where(has_viirs, 'viirs', np.where(has_scaled, 'modis_scaled', 'none')))
+    table = wide[OUTPUT_COLUMNS].sort_values(['area', 'year', 'month'], ignore_index=True)
+    table.attrs['gaps'] = gaps
+    return table, fits
 
 
 def _expand(paths: list[str]) -> list[Path]:
@@ -209,6 +285,13 @@ def main(argv: list[str] | None = None) -> int:
     if no_fit:
         print(f"\nNo factor for {', '.join(no_fit)}: needs months with both MODIS and VIIRS data "
               '(download both sensors for the same years). Months without VIIRS have no harmonized value.')
+    gaps = table.attrs.get('gaps')
+    if gaps is not None and len(gaps):
+        for sensor, grp in gaps.groupby('sensor'):
+            days = grp['date'].sort_values()
+            print(f"\n{sensor.upper()} recorded nothing on {len(days)} day(s) while the other sensor saw fires "
+                  f"({days.iloc[0]:%Y-%m-%d} .. {days.iloc[-1]:%Y-%m-%d}): left out of the fit"
+                  + (', filled with MODIS x factor.' if sensor == 'viirs' else '.'))
     print(f'\nWrote {len(table):,} area-months to {args.out}')
     return 0
 

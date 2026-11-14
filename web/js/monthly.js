@@ -84,7 +84,8 @@ function renderGrid(info) {
       if (level !== -1) cell.style.background = COLOURS[level];
       const short = v >= 1000 ? (Math.floor(v / 100) / 10).toFixed(1) + 'k' : fmt(v);
       cell.textContent = level > 0 && v >= 0.05 * vmax ? short : '';
-      const source = m?.source === 'viirs' ? 'VIIRS' : m?.source === 'modis_scaled' ? 'MODIS × factor' : 'no data';
+      const source = { viirs: 'VIIRS', modis_scaled: 'MODIS × factor',
+        'viirs+modis_gap_fill': `VIIRS, ${m?.viirs_gap_days} satellite-gap days filled with MODIS × factor` }[m?.source] || 'no data';
       const tip = `${MONTHS[month - 1]} ${year}: ${fmt(v)} harmonized fire cell-days`
         + (m ? ` (${source}; VIIRS ${fmt(m.viirs)}, MODIS ${fmt(m.modis)})` : '')
         + (level >= 0 ? ' · ' + NAMES[level] : '');
@@ -109,7 +110,9 @@ function renderGrid(info) {
   const f = info.fit || {};
   $('fit-note').textContent = f.factor
     ? `VIIRS ≈ ${f.factor.toFixed(2)} × MODIS for ${state.area} (R² ${f.r2?.toFixed(2)}, ${f.overlap_months} overlap months). `
-      + 'Months with VIIRS use it directly; earlier months use MODIS × factor. Method: docs/harmonization.md.'
+      + 'Months with VIIRS use it directly; earlier months use MODIS × factor.'
+      + (f.gap_days ? ` ${f.gap_days} days when one satellite was not recording are left out of the fit, and VIIRS gap days are filled with MODIS × factor.` : '')
+      + ' Method: docs/harmonization.md.'
     : 'Not enough overlapping MODIS and VIIRS months to fit a factor yet.';
 }
 

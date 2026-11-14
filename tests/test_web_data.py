@@ -57,8 +57,7 @@ class BuildTests(unittest.TestCase):
         self.assertAlmostEqual(day['frp'], sum(10.0 + k for k in range(21)))
 
     def test_cleaning_drops_low_confidence(self):
-        # 3 March only has low-confidence rows, so nothing is left in either area: a gap
-        self.assertEqual(self.archive['2022-03-03'], {})
+        self.assertEqual(self.archive['2022-03-03']['Canada']['total'], 0)
         self.assertEqual(self.archive['2022-03-15']['Canada']['total'], 1)
 
     def test_covered_days_are_zero_and_every_day_is_present(self):
@@ -108,28 +107,32 @@ class SamplingTests(unittest.TestCase):
 
 
 class GapTests(unittest.TestCase):
-    def test_day_with_nothing_in_any_area_is_no_data(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            folder = Path(tmp)
-            write_year(folder, 'Canada', 2022, peak=7, lat=55.0, lon=-110.0)
-            write_year(folder, 'Argentina', 2022, peak=9, lat=-35.0, lon=-60.0)
-            web_data.build(folder, verbose=False)
-            out = web_data.web_dir(folder)
-            archive = json.loads((out / 'archive.json').read_text())
-            gaps = json.loads((out / 'monthly.json').read_text())['daily_gaps']['2022']
-        # fixtures only have fires on the 15th, so other days are empty in both areas
-        self.assertIn('2022-07-16', gaps)
-        self.assertNotIn('2022-07-15', gaps)
-        self.assertEqual(archive['2022-07-16'], {})
-        self.assertEqual(archive['2022-07-15']['Canada']['total'], 21)
+    def build_with_viirs_gap(self, folder: Path):
+        write_year(folder, 'Canada', 2022, peak=7, lat=55.0, lon=-110.0)
+        write_year(folder, 'Argentina', 2022, peak=9, lat=-35.0, lon=-60.0, day=16)
+        # 20 July: MODIS saw a fire in Canada, VIIRS recorded nothing anywhere
+        path = folder / 'modis_2022_Canada.csv'
+        extra = pd.DataFrame([dict(latitude=56.0, longitude=-111.0, acq_date='2022-07-20', acq_time='1330',
+                                   satellite='Aqua', instrument='MODIS', confidence='80', frp=12.0, type=0)])
+        pd.concat([pd.read_csv(path), extra]).to_csv(path, index=False)
+        web_data.build(folder, verbose=False)
+        out = web_data.web_dir(folder)
+        return json.loads((out / 'archive.json').read_text()), json.loads((out / 'monthly.json').read_text())
 
-    def test_one_area_alone_never_counts_as_a_gap(self):
+    def test_viirs_gap_day_is_no_data_in_the_daily_view(self):
         with tempfile.TemporaryDirectory() as tmp:
-            folder = Path(tmp)
-            write_year(folder, 'Canada', 2022, peak=7, lat=55.0, lon=-110.0)
-            web_data.build(folder, verbose=False)
-            archive = json.loads((web_data.web_dir(folder) / 'archive.json').read_text())
-        self.assertEqual(archive['2022-07-16']['Canada']['total'], 0)
+            archive, monthly = self.build_with_viirs_gap(Path(tmp))
+        self.assertEqual(monthly['daily_gaps'], {'2022': ['2022-07-20']})
+        self.assertEqual(archive['2022-07-20'], {})
+        self.assertEqual(archive['2022-07-21']['Canada']['total'], 0)     # quiet day stays 0
+
+    def test_gap_month_is_filled_in_the_harmonized_record(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            _, monthly = self.build_with_viirs_gap(Path(tmp))
+        jul = next(m for m in monthly['areas']['Canada']['months'] if m['year'] == 2022 and m['month'] == 7)
+        self.assertEqual(jul['source'], 'viirs+modis_gap_fill')
+        self.assertEqual(jul['viirs_gap_days'], 1)
+        self.assertGreater(jul['harmonized'], jul['viirs'])
 
 
 class EnsureTests(unittest.TestCase):

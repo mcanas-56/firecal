@@ -15,9 +15,9 @@ Daily view: cleaned VIIRS Suomi-NPP detections where a VIIRS S-NPP file covers t
 area and year (finer pixels, same satellite the harmonization is calibrated to),
 otherwise MODIS. A yearly country file covers every day of its year, so a covered day
 with no detections is 0; days no file covers are absent (shown as "no data").
-Satellite gaps: a day on which none of the downloaded areas has a single detection from
-that sensor is treated as missing data (e.g. Suomi NPP was offline 27 Jul-10 Aug 2022),
-not as a fire-free day. This needs at least two areas, since one quiet area proves nothing.
+Satellite gaps come from the harmonization (src/harmonize.sensor_gaps): days a sensor
+recorded nothing while the other saw fires (e.g. Suomi NPP was offline 27 Jul-10 Aug
+2022). The daily view shows those days as no data, not as fire-free days.
 Harmonization is monthly by design, so the month x year view and the season summary
 use the harmonized record.
 """
@@ -107,21 +107,18 @@ def daily_archive(df: pd.DataFrame, chosen: dict[tuple[str, int], dict]) -> dict
     return dict(sorted(archive.items()))
 
 
-def sensor_gaps(archive: dict, chosen: dict[tuple[str, int], dict]) -> dict[str, list[str]]:
-    """{year: [days]} where every area using the same daily files/sensor recorded nothing."""
-    gaps: dict[str, list[str]] = {}
-    years = {y for _, y in chosen}
-    for year in sorted(years):
-        for sensor in ('viirs', 'modis'):
-            areas = [a for (a, y), p in chosen.items() if y == year and p['sensor'] == sensor]
-            if len(areas) < 2:
-                continue
-            for day, by_area in archive.items():
-                if day.startswith(str(year)) and all(by_area.get(a, {}).get('total', 1) == 0 for a in areas):
-                    gaps.setdefault(str(year), []).append(day)
-                    for a in areas:
-                        by_area.pop(a, None)          # absent = no data
-    return gaps
+def apply_gaps(archive: dict, chosen: dict[tuple[str, int], dict], gaps: pd.DataFrame) -> dict[str, list[str]]:
+    """Remove days the daily view's sensor was not recording; returns {year: [days]}."""
+    out: dict[str, list[str]] = {}
+    gap_set = {(r.sensor, r.date.strftime('%Y-%m-%d')) for r in gaps.itertuples(index=False)}
+    for (area, year), pick in chosen.items():
+        for day, by_area in archive.items():
+            if day.startswith(str(year)) and (pick['sensor'], day) in gap_set and area in by_area:
+                del by_area[area]
+                out.setdefault(str(year), [])
+                if day not in out[str(year)]:
+                    out[str(year)].append(day)
+    return {y: sorted(d) for y, d in sorted(out.items())}
 
 
 def _num(x, digits: int | None = None):
@@ -143,10 +140,12 @@ def monthly_summary(table: pd.DataFrame, fits: pd.DataFrame, chosen: dict, files
         fit = fit_by_area.get(area, {})
         areas[area] = {
             'fit': {k: _num(fit.get(k), 4) for k in ('factor', 'r2', 'pearson_r', 'median_abs_pct_diff')}
-                   | {'overlap_months': int(fit.get('overlap_months', 0) or 0)},
+                   | {'overlap_months': int(fit.get('overlap_months', 0) or 0),
+                      'gap_days': int(fit.get('gap_days', 0) or 0)},
             'months': [{'year': int(r.year), 'month': int(r.month),
                         'modis': _num(r.modis_cell_days), 'viirs': _num(r.viirs_cell_days),
-                        'harmonized': _num(r.harmonized, 1), 'source': str(r.source)}
+                        'harmonized': _num(r.harmonized, 1), 'source': str(r.source),
+                        'viirs_gap_days': int(r.viirs_gap_days)}
                        for r in grp.itertuples()],
             'season': {'status': season.status, 'years': list(season.years),
                        'start': season.start_month, 'peak': season.peak_month, 'end': season.end_month,
@@ -168,7 +167,7 @@ def build(folder: Path | None = None, *, verbose: bool = True) -> dict:
     table, fits = harmonize(df)
     chosen = daily_files(files)
     archive = daily_archive(df, chosen)
-    gaps = sensor_gaps(archive, chosen)
+    gaps = apply_gaps(archive, chosen, table.attrs.get('gaps', pd.DataFrame(columns=['sensor', 'date'])))
     summary = monthly_summary(table, fits, chosen, files, gaps)
 
     monthly_path(folder).parent.mkdir(parents=True, exist_ok=True)

@@ -173,7 +173,7 @@ From the repo root, with `.venv` activated and the practice data in `data/`:
 python -m src.harmonize data/*.csv
 ```
 
-This runs the US-01 loader, then turns MODIS Aqua and VIIRS Suomi-NPP detections into fire cell-days (each 0.1° grid cell counted once per day per sensor), sums them by month, fits one VIIRS/MODIS factor per area on the overlap months, and writes `data/processed/harmonized_monthly.csv` (one row per area-month, local only). It prints the factor, R², Pearson r and median % difference per area. Options: `--grid 0.25`, `--include-terra`, `--out path.csv`, `--quiet`.
+This runs the US-01 loader, then turns MODIS Aqua and VIIRS Suomi-NPP detections into fire cell-days (each 0.1° grid cell counted once per day per sensor), sums them by month, finds days one satellite was not recording (e.g. Suomi NPP offline 27 Jul–10 Aug 2022), fits one VIIRS/MODIS factor per area on the overlap months without those days, fills VIIRS gap days with MODIS × factor, and writes `data/processed/harmonized_monthly.csv` (one row per area-month, local only). It prints the factor, R², Pearson r and median % difference per area, and the gap days it found. Options: `--grid 0.25`, `--include-terra`, `--out path.csv`, `--quiet`.
 
 In Python:
 
