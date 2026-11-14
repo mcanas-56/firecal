@@ -81,7 +81,7 @@ python -m src.serve        # Windows: py -3 -m src.serve
 
 That's the only command. It:
 
-1. prepares the data from `data/*.csv` with our pipeline: cleans the hotspots (US-01), harmonizes MODIS and VIIRS into one monthly record (US-02) and estimates the fire season (US-05). This takes a few seconds the first time, and runs again only when a CSV changes. The results go to `data/processed/` (local, gitignored).
+1. prepares the data from `data/*.csv` with our pipeline: cleans the hotspots (US-01), harmonizes MODIS and VIIRS into one monthly record (US-02) and estimates the fire season (US-05). This takes about 20–30 seconds the first time for the full 2012–2023 set, and runs again only when the data files or the pipeline code change (for example after a `git pull`). The results go to `data/processed/` (local, gitignored).
 2. serves the page at http://localhost:8000 (the next free port if 8000 is taken) and opens your browser. Stop it with `Ctrl+C`.
 
 Options: `--port 8080`, `--no-browser`, `--skip-build` (serve the last build). `python -m src.web_data` rebuilds the data without starting the server. With no data yet, the page shows the download command.

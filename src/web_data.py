@@ -233,7 +233,7 @@ def ensure(folder: Path | None = None, *, verbose: bool = True) -> str:
     reason = why_rebuild(folder, files)
     if reason:
         if verbose:
-            print(f'Preparing FireCal data from data/*.csv ({reason}; takes a few seconds)...', flush=True)
+            print(f'Preparing FireCal data from data/*.csv ({reason}; about 20-30 seconds for 2012-2023)...', flush=True)
         build(folder, verbose=verbose)
         return 'built'
     return 'cached'
