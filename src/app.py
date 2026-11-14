@@ -40,17 +40,21 @@ if monthly is None:
     st.code('python3 scripts/get_data.py        # Windows: py -3 scripts\\get_data.py', language='bash')
     st.stop()
 
-areas = sorted(monthly['area'].dropna().unique())
-area = DEFAULT_AREA if DEFAULT_AREA in areas else areas[0]
-
 # 2. Controls -------------------------------------------------------------------
-st.caption(f'Area: **{area}** (area selection comes with US-03) · data view: harmonized '
-           '(raw vs harmonized toggle comes with US-07) · CSV export comes with US-08')
+# US-03: one area control drives every section. Canada first, then the rest A-Z.
+# The choice is kept in the page address (?area=Argentina) so a link opens on it.
+found = sorted(monthly['area'].dropna().unique())
+areas = ([DEFAULT_AREA] if DEFAULT_AREA in found else []) + [a for a in found if a != DEFAULT_AREA]
+if st.session_state.get('area') not in areas:
+    wanted = st.query_params.get('area')
+    st.session_state['area'] = wanted if wanted in areas else areas[0]
+area = st.radio('Area', areas, key='area', horizontal=True)
+st.query_params['area'] = area
+st.caption('Data view: harmonized (raw vs harmonized toggle comes with US-07) · '
+           'CSV export comes with US-08')
 
 # 3. Season summary (US-05) ------------------------------------------------------
-# Start the summary's own area picker on the same area as the rest of the page.
-st.session_state.setdefault('season_area', area)
-render_season_summary(monthly)
+render_season_summary(monthly, area=area)
 
 # 4-5. Calendar and legend -----------------------------------------------------------
 # US-04a: the agreed layout drawn with SAMPLE values. US-04 swaps in the real record for

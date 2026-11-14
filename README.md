@@ -218,3 +218,9 @@ st.html(calendar_html(sample_monthly('Canada'), flags={2023: 'high', 2020: 'low'
 ```
 
 The app currently shows it with **sample values** (`sample_monthly`) so the team can agree the layout. US-04 passes the real harmonized rows for the selected area instead: `calendar_html(monthly[monthly.area == area])`.
+
+## Area selection (US-03)
+
+The **Area** control at the top of the app (Canada | Argentina) drives every section: season summary, calendar, data preview and, later, the map. Canada is the default. The choice is kept in the page address, so `http://localhost:8501/?area=Argentina` opens straight on Argentina; an unknown area falls back to Canada. Areas come from the data, so downloading another country with `get_data.py --countries` adds it to the control.
+
+`render_season_summary(monthly, area=...)` takes the selected area; called without one it shows its own picker, as before.
