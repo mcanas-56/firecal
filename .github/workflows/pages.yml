@@ -1,0 +1,73 @@
+# Publishes FireCal to GitHub Pages: https://mcanas-56.github.io/firecal/
+#
+# On every push to main: download the NASA FIRMS CSVs (cached between runs), run our
+# pipeline (cleaning, harmonization, season) and publish web/ + the built data.
+# On pull requests it only builds, so a broken build shows up before merging.
+# Needs Settings > Pages > Source: "GitHub Actions" (one-time).
+name: Deploy site to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # The yearly FIRMS files for past years don't change, so keep them between runs
+      # instead of downloading ~740 MB from NASA every time.
+      - name: Restore NASA FIRMS data
+        uses: actions/cache@v4
+        with:
+          path: data/*.csv
+          key: firms-csv-${{ hashFiles('scripts/get_data.py') }}
+
+      - name: Download NASA FIRMS data (only missing files)
+        run: python scripts/get_data.py
+
+      - name: Run the tests
+        run: python -m unittest discover -s tests
+
+      - name: Build the site
+        run: python -m src.build_site --out _site
+
+      - uses: actions/configure-pages@v5
+        if: github.event_name != 'pull_request'
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

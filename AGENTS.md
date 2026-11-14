@@ -17,6 +17,7 @@ Setup downloads any missing file of the NASA FIRMS data, 2012-2023 (48 files, ab
 
 - `web/` the FireCal page: `index.html`, `styles.css`, `js/` split by feature (`state` shared state and actions, `calendar` daily calendar, `monthly` season + month x year calendar, `ticker` fire-activity bar, `globe`, `timeline`, `theme`, `nav`, `main` wiring and data loading), bundled `vendor/d3.min.js` and `data/land.geojson`. Keep it offline apart from the web fonts
 - `design/prototype/` the firecal-demo prototype and `design/screenshots/`: the design source of truth. Port its CSS, markup and D3 code rather than redrawing from screenshots
+- `src/build_site.py` builds the public website: runs the same data build, then copies `web/` + the two data files into `_site/` (gitignored). `.github/workflows/pages.yml` runs it and publishes to GitHub Pages (https://mcanas-56.github.io/firecal/) on every push to `main`; on pull requests it only builds
 - `src/serve.py` the one-command start: prepares the data, then serves `web/` on localhost (standard library only). `/data/archive.json` and `/data/monthly.json` are served from `data/processed/web/`
 - `src/web_data.py` builds the page data from `data/*.csv` with the pipeline below: `archive.json` (date -> area -> {total, frp, points: [[lat, lon, frp]]}, daily VIIRS S-NPP, MODIS where no VIIRS) and `monthly.json` (per area: harmonized months, MODIS->VIIRS fit, season, daily sensor)
 - `src/load_data.py` loads and cleans FIRMS CSVs (US-01), `src/harmonize.py` builds the harmonized monthly record (US-02; its command line caches daily cell-days per CSV in `data/processed/cells/`, US-14), `src/features.py` builds the cell-month feature table for the outlook (US-15; predictors use only earlier months), `src/season_summary.py` estimates the fire season (US-05), `src/app_data.py` data folder and staleness helpers (US-09), `src/palette.py` the T-03 palette notes
@@ -31,7 +32,8 @@ Setup downloads any missing file of the NASA FIRMS data, 2012-2023 (48 files, ab
 ## Running
 
 - App: `python -m src.serve` (rebuilds the data when a CSV changed, serves http://localhost:8000, opens the browser; next free port if taken). `python -m src.web_data` rebuilds the data only.
-- Everything runs locally. No cloud hosting, no external API calls from the app.
+- The app runs locally with `python -m src.serve`. The public site is a static copy of the same page and data on GitHub Pages, built by GitHub Actions from `main`; there is no server code online. The page makes no external API calls apart from the web fonts.
+- Use relative paths in `web/` (no leading `/`): GitHub Pages serves the site under `/firecal/`.
 
 ## Data notes
 

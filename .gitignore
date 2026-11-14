@@ -20,3 +20,6 @@ venv/
 # Claude Code: share commands, keep personal settings local
 .claude/*
 !.claude/commands/
+
+# Built website (python -m src.build_site)
+_site/
