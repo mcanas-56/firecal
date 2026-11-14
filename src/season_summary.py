@@ -71,8 +71,12 @@ def summarize_season(monthly: pd.DataFrame, area: str, *,
     return SeasonSummary(area, 'ok', years, start, peak, months[-1], tuple(months), threshold_fraction)
 
 
-def render_season_summary(monthly: pd.DataFrame) -> None:
-    """Streamlit area selection and summary, reusable by the future app shell."""
+def render_season_summary(monthly: pd.DataFrame, area: str | None = None) -> None:
+    """Streamlit summary for one area.
+
+    The app passes the area chosen in its own area control (US-03). Without an area, a
+    selectbox is shown so the summary also works on its own.
+    """
     import calendar
     import streamlit as st
 
@@ -81,7 +85,8 @@ def render_season_summary(monthly: pd.DataFrame) -> None:
     if not areas:
         st.info('No area data available.')
         return
-    area = st.selectbox('Area', areas, key='season_area')
+    if area is None:
+        area = st.selectbox('Area', areas, key='season_area')
     try:
         summary = summarize_season(monthly, area)
     except ValueError as exc:

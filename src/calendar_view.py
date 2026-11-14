@@ -20,8 +20,13 @@ LABEL_FRACTION = 0.05  # label cells with at least 5% of the busiest month on sc
 FLAG_TEXT = {'high': 'unusually high', 'low': 'unusually low'}
 FLAG_COLOR = {'high': P.FLAG_HIGH_COLOR, 'low': P.FLAG_LOW_COLOR}
 
-# Sample values, shaped like a Canadian fire season (placeholders, not FIRMS data).
-_SAMPLE_PROFILE = [2, 6, 25, 120, 600, 2500, 5200, 4100, 900, 200, 30, 3]
+# Sample values (placeholders, not FIRMS data). Canada: one summer wildfire season.
+# Argentina: southern-hemisphere pattern, a late-winter/spring peak (Aug-Sep) and a
+# second, smaller summer peak in Jan-Feb.
+_SAMPLE_PROFILES = {
+    'Canada': [2, 6, 25, 120, 600, 2500, 5200, 4100, 900, 200, 30, 3],
+    'Argentina': [3000, 2200, 800, 500, 700, 1000, 1800, 4200, 5200, 2800, 2200, 1500],
+}
 _SAMPLE_YEAR_SCALE = {2012: 0.9, 2013: 1.0, 2014: 1.4, 2015: 1.0, 2016: 1.2, 2017: 1.1,
                       2018: 1.3, 2019: 1.0, 2020: 0.35, 2021: 1.15, 2022: 0.95, 2023: 3.2}
 
@@ -29,12 +34,15 @@ _SAMPLE_YEAR_SCALE = {2012: 0.9, 2013: 1.0, 2014: 1.4, 2015: 1.0, 2016: 1.2, 201
 def sample_monthly(area: str = 'Canada') -> pd.DataFrame:
     """Placeholder monthly record, 2012-2023, same columns the real data uses.
 
+    Canada and Argentina have their own seasonal shape; any other area uses Canada's.
+
     Includes one month with no data (Jan 2012) and one with zero fires (Dec 2012) so the
     two special colours show; 2023 is a record year and 2020 a quiet one.
     """
+    profile = _SAMPLE_PROFILES.get(area, _SAMPLE_PROFILES['Canada'])
     rows = []
     for year, scale in _SAMPLE_YEAR_SCALE.items():
-        for month, base in enumerate(_SAMPLE_PROFILE, start=1):
+        for month, base in enumerate(profile, start=1):
             rows.append(dict(area=area, year=year, month=month, harmonized=float(round(base * scale))))
     df = pd.DataFrame(rows)
     df.loc[(df.year == 2012) & (df.month == 1), 'harmonized'] = math.nan

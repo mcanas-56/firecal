@@ -81,14 +81,6 @@ class AppShellTests(unittest.TestCase):
         self.assertIn('Fire-season summary', headers)
         self.assertTrue(any('Canada' in h for h in headers), headers)
 
-    def test_summary_starts_on_canada_even_when_another_area_sorts_first(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            write_firms(Path(tmp))
-            write_firms(Path(tmp), area='Argentina')
-            at = self.run_app(Path(tmp))
-        self.assertEqual([e.message for e in at.exception], [])
-        self.assertEqual(at.selectbox(key='season_area').value, 'Canada')
-
 
 if __name__ == '__main__':
     unittest.main()
