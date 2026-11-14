@@ -241,10 +241,23 @@ footer{display:flex;justify-content:space-between;border-top:1px solid var(--lin
 @media(max-width:620px){.live-announce{top:auto;bottom:250px;left:12px;right:12px;transform:none;max-width:none;padding:8px 12px;gap:10px}.live-announce>div{flex:1;min-width:0}.live-announce span:not(.dot){display:none}.live-announce strong{font-size:13px}}
 #live-mode{display:inline-flex;align-items:center;justify-content:center;gap:2px}
 
-/* Outlook mode (US-18): month picker, notes and the chance-of-fire legend on the globe. */
+/* Predictions tab (US-18): month picker, notes and the legend on the globe. */
 #outlook-controls select{width:100%}
 .outlook-note{margin:12px 0 20px;padding:14px;border:1px solid var(--line);border-radius:7px;background:var(--raised);font-size:12px;line-height:1.6}
 .outlook-note p{margin:6px 0 0;color:var(--muted)}
-#map .outlook-legend{bottom:16px;left:16px}
+#map .outlook-legend{bottom:auto;top:84px;left:16px}
 .outlook-legend .ring{display:inline-block;width:9px;height:9px;border-radius:50%;border:1.5px solid #1f6f9a;margin-right:4px;vertical-align:-1px}
 [data-theme="dark"] .outlook-legend .ring{border-color:#8fdcff}
+
+/* Predictions strip (US-18b): the months as clickable columns, in the Time Explorer's place. */
+.season-strip{position:static;margin:14px 20px 20px;padding-bottom:10px;box-shadow:none}
+#season-chart svg{display:block;width:100%;height:auto;max-height:120px;margin-top:6px}
+#season-chart .col{cursor:pointer}
+#season-chart .col:focus-visible rect.hit{stroke:var(--accent);stroke-width:2}
+.season-key{display:flex;flex-wrap:wrap;gap:12px;font-size:9px;color:var(--muted);margin-top:4px}
+.season-key i{display:inline-block;width:10px;height:10px;margin-right:4px;vertical-align:-1px;border-radius:2px}
+.season-key .band{background:var(--accent);opacity:.25}
+.season-key .line{height:2px;background:var(--accent);vertical-align:3px}
+.season-key .last{background:var(--orange);border-radius:50%;width:7px;height:7px}
+.season-key .ringkey{border:1.5px solid #1f6f9a;border-radius:50%;width:9px;height:9px}
+[data-theme="dark"] .season-key .ringkey{border-color:#8fdcff}

@@ -15,7 +15,7 @@ Setup downloads any missing file of the NASA FIRMS data, 2012-2023 (48 files, ab
 
 ## Layout
 
-- `web/` the FireCal page: `index.html`, `styles.css`, `js/` split by feature (`state` shared state and actions, `calendar` daily calendar, `monthly` season + month x year calendar, `ticker` fire-activity bar, `globe`, `timeline`, `theme`, `nav`, `outlook` the globe's Outlook mode, `main` wiring and data loading), bundled `vendor/d3.min.js` and `data/land.geojson`. Keep it offline apart from the web fonts
+- `web/` the FireCal page: `index.html`, `styles.css`, `js/` split by feature (`state` shared state and actions, `calendar` daily calendar, `monthly` season + month x year calendar, `ticker` fire-activity bar, `globe`, `timeline`, `theme`, `nav`, `outlook` the globe's Predictions tab (typical-month map, Predictions strip, next month, back-tests), `main` wiring and data loading), bundled `vendor/d3.min.js` and `data/land.geojson`. Keep it offline apart from the web fonts
 - `design/prototype/` the firecal-demo prototype and `design/screenshots/`: the design source of truth. Port its CSS, markup and D3 code rather than redrawing from screenshots
 - `src/build_site.py` builds the public website: runs the same data build, then copies `web/` + the generated data files (including `outlook.json`) into `_site/` (gitignored). `.github/workflows/pages.yml` runs it and publishes to GitHub Pages (https://mcanas-56.github.io/firecal/) on every push to `main`; on pull requests it only builds
 - `src/serve.py` the one-command start: prepares the data, then serves `web/` on localhost (standard library only). `/data/archive.json`, `/data/monthly.json` and `/data/outlook.json` are served from `data/processed/web/`

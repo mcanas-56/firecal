@@ -274,12 +274,13 @@ The **Month by year** grid on the page shows the harmonized record from US-02: o
 
 The area switch at the top of the page (Canada | Argentina) drives every section: daily calendar, season, month × year calendar, globe and stat cards. Canada is the default. The choice is kept in the page address, so `http://localhost:8000/?area=Argentina` opens straight on Argentina; an unknown area falls back to Canada. Areas come from the data, so downloading another country with `get_data.py --countries` adds it to the switch.
 
-## Outlook mode (US-18)
+## Predictions tab (US-18)
 
-The globe's third tab, **Outlook**, shows the US-16 fire outlook, labelled *Outlook from 2012–2023 patterns, not a forecast*. Pick a month in the sidebar:
-- **Next-month outlook** (January 2024, the month after the record ends): every 0.1° cell with at least a 5% chance of a fire cell-day, coloured 5–20%, 20–50% and 50%+. The cards show how many cells reach 30%, the expected harmonized fire cell-days for the area (with the normal and the past low–high range), and the typical peak month.
+The globe's third tab, **Predictions**, is labelled *Predictions from 2012–2023 fire patterns, not a weather forecast*. Under the globe, in place of the Time Explorer, the **Predictions strip** shows each month's normal fire cell-days, the 2012–2023 range, the last year, and the next-month prediction. Click a month to map it. The **Show** menu in the sidebar has three kinds of view:
+- **Typical month** (the default opens on the area's peak month): how many of the 12 years each 0.1° cell burned in that calendar month (2, 3–5 or 6+ years). It shows where burning is routine, not where the next fire will start. In Canada, repeat burning peaks in spring and fall, which is often agricultural or planned burning; satellites can't tell it apart from wildfire, and the page says so for those months.
+- **Next month** (January 2024, the month after the record ends): every cell with at least a 5% chance of a fire cell-day, coloured 5–20%, 20–50% and 50%+, with the expected fire cell-days for the area.
 - **Back-test** (any month of 2022–2023): what the tested model expected, with the fires that actually happened drawn as rings. The cards show the share of fires that landed on mapped cells (fires in places with no fire since 2012 count as misses) and the monthly estimate against the actual value. Months when VIIRS was offline are shown, flagged and left out of the scores.
 
-The sidebar note gives each model's test score against its climatology baseline. If a model had not beaten its baseline, the map would show the baseline instead.
+The sidebar note gives the models' test scores against the historical average. If a model had not beaten it, the map would show the average instead.
 
-The page builds `outlook.json` with the rest of its data (`src/outlook.py`, run in its own process, about 30 extra seconds). It needs the full 2012–2023 download; with fewer years, the Outlook tab says which years are missing.
+The page builds `outlook.json` with the rest of its data (`src/outlook.py`, run in its own process, about 30 extra seconds). It needs the full 2012–2023 download; with fewer years, the Predictions tab says which years are missing.

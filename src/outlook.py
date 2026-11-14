@@ -1,4 +1,4 @@
-"""Page data for the globe's Outlook mode (US-18): outlook.json.
+"""Page data for the globe's Predictions tab (US-18): outlook.json.
 
 Built by src/web_data.py next to archive.json and monthly.json, from the US-14 cell
 cache, the US-15 feature table and the US-16 models. Per area it holds:
@@ -15,11 +15,15 @@ cache, the US-15 feature table and the US-16 models. Per area it holds:
   2021, count as misses: new_area_fires), the share of fires that fell on cells shown
   on the outlook map (on_map_share), and the monthly prediction vs what happened. Months with VIIRS gap
   days are shown with viirs_gap_days (observed fires undercounted) but not scored.
-- climatology: mean, low and high harmonized fire cell-days per calendar month.
+- climatology: mean, low and high harmonized fire cell-days per calendar month, and
+  last_year: the most recent year's value for each month (the Predictions strip).
+- typical: per calendar month, the cells that burned in at least TYPICAL_MIN_YEARS of
+  the record's years in that month, with how many years ([lat, lon, share, years]).
+  It shows where burning is routine in that month, not where the next fire will start.
 
 Everything is labelled as an outlook from 2012-2023 patterns, not a forecast: the
 models know only fire history, not weather. If anything fails, outlook.json says
-status "unavailable" with the reason, and the Outlook tab shows that reason.
+status "unavailable" with the reason, and the Predictions tab shows that reason.
 """
 from __future__ import annotations
 
@@ -36,10 +40,12 @@ from src.harmonize import cached_cells, harmonize_cells
 from src.predict import (TEST, TRAIN, TUNE, _rows, _with_last_month, cell_models, climatology, design,
                          fit_logistic, fit_persistence, monthly_models, predict_logistic, season_timing)
 
-LABEL = 'Outlook from 2012–2023 patterns, not a forecast'
+LABEL = 'Predictions from 2012–2023 fire patterns, not a weather forecast'
 MIN_P = 0.05          # cells below this chance are left off the map
 MAX_CELLS = 2500      # per map, highest chances first
 MAX_FIRES = 2500      # actual burned cells per back-test month (evenly sampled beyond this)
+TYPICAL_MIN_YEARS = 2 # a cell joins a typical-month map when it burned in at least 2 years
+MAX_TYPICAL = 4000    # per typical-month map, most often burned first
 
 
 def _r(x, digits=3):
@@ -61,6 +67,22 @@ def _cell_list(lat, lon, p) -> list:
 def _fire_list(lat, lon) -> list:
     every = max(1, int(np.ceil(len(lat) / MAX_FIRES)))
     return [[round(float(a), 2), round(float(b), 2)] for a, b in zip(lat[::every], lon[::every])]
+
+
+def typical_months(history: pd.DataFrame, years: int) -> dict:
+    """Per calendar month: cells that burned in at least TYPICAL_MIN_YEARS of `years` years."""
+    n = history.groupby(['ci', 'cj', 'month'], observed=True)['burned'].sum().reset_index(name='n')
+    lat_lon = history.drop_duplicates(['ci', 'cj']).set_index(['ci', 'cj'])[['lat', 'lon']]
+    n = n.join(lat_lon, on=['ci', 'cj'])
+    out = {}
+    for month in range(1, 13):
+        g = n[(n['month'] == month) & (n['n'] >= TYPICAL_MIN_YEARS)].sort_values(['n', 'ci', 'cj'], ascending=[False, True, True])
+        out[str(month)] = {
+            'cells': [[round(float(r.lat), 2), round(float(r.lon), 2), round(r.n / years, 3), int(r.n)]
+                      for r in g.head(MAX_TYPICAL).itertuples()],
+            'cells_total': int(len(g)), 'cells_half': int((g['n'] >= years / 2).sum()),
+        }
+    return out
 
 
 def _skill(cell: dict | None, monthly: dict | None, timing: dict | None) -> dict:
@@ -178,7 +200,10 @@ def build_outlook(cells: pd.DataFrame, coverage: pd.DataFrame, monthly: pd.DataF
                 'viirs_gap_days': int(gap_days.get((y, m), 0)),
             }
 
+        last = m_area[m_area['year'] == last_year].set_index('month')['harmonized']
         areas[area] = {
+            'typical': typical_months(df[~future.loc[df.index]], last_year - first_year + 1),
+            'last_year': {'year': last_year, 'values': [_r(last.get(mm), 0) for mm in range(1, 13)]},
             'skill': _skill(cell, mon, timing.get(area)),
             'forecast': forecast,
             'backtest': backtest,
@@ -188,7 +213,8 @@ def build_outlook(cells: pd.DataFrame, coverage: pd.DataFrame, monthly: pd.DataF
     return {'status': 'ok', 'label': LABEL, 'built': datetime.now(timezone.utc).isoformat(timespec='seconds'),
             'data_end': str(data_end), 'forecast_month': str(target),
             'years': {'train': list(TRAIN), 'tune': list(TUNE), 'test': list(TEST)},
-            'min_p': MIN_P, 'max_cells': MAX_CELLS, 'areas': areas}
+            'min_p': MIN_P, 'max_cells': MAX_CELLS, 'typical_min_years': TYPICAL_MIN_YEARS,
+            'record_years': [first_year, last_year], 'areas': areas}
 
 
 def write_outlook(files: list[Path], out: Path, cache_dir: Path, *, verbose: bool = True) -> dict:
@@ -204,7 +230,7 @@ def write_outlook(files: list[Path], out: Path, cache_dir: Path, *, verbose: boo
         data = build_outlook(cells, coverage, monthly)
     except Exception as exc:  # the rest of the page must not depend on the outlook
         if verbose:
-            print(f'Outlook not built ({exc}); the Outlook tab will say so.')
+            print(f'Predictions not built ({exc}); the Predictions tab will say so.')
             traceback.print_exc()
         data = {'status': 'unavailable', 'reason': str(exc), 'label': LABEL, 'areas': {}}
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -231,7 +257,7 @@ def run_outlook(files: list[Path], out: Path, cache_dir: Path, *, verbose: bool 
 
 def main(argv: list[str] | None = None) -> int:
     import argparse
-    parser = argparse.ArgumentParser(description='Build outlook.json for the globe\'s Outlook mode (US-18).')
+    parser = argparse.ArgumentParser(description='Build outlook.json for the globe\'s Predictions tab (US-18).')
     parser.add_argument('paths', nargs='+', type=Path, help='FIRMS CSVs')
     parser.add_argument('--out', type=Path, required=True)
     parser.add_argument('--cache-dir', type=Path, required=True)

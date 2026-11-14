@@ -76,6 +76,24 @@ class BuildOutlookTests(unittest.TestCase):
             if b['on_map_share'] is not None:
                 self.assertTrue(0 <= b['on_map_share'] <= 1)
 
+    def test_typical_month_maps(self):
+        a = self.data['areas']['Canada']
+        self.assertEqual(self.data['record_years'], [2012, 2023])
+        self.assertEqual(sorted(a['typical'], key=int), [str(m) for m in range(1, 13)])
+        july = a['typical']['7']
+        years = [c[3] for c in july['cells']]
+        self.assertTrue(years and all(2 <= n <= 12 for n in years))
+        self.assertEqual(years, sorted(years, reverse=True))
+        self.assertTrue(all(abs(c[2] - c[3] / 12) < 1e-3 for c in july['cells']))
+        self.assertGreaterEqual(july['cells_total'], july['cells_half'])
+        # the synthetic season is Jul-Sep, so July has more routine-burn cells than February
+        self.assertGreater(july['cells_total'], a['typical']['2']['cells_total'])
+
+    def test_last_year_values(self):
+        ly = self.data['areas']['Argentina']['last_year']
+        self.assertEqual(ly['year'], 2023)
+        self.assertEqual(len(ly['values']), 12)
+
     def test_skill_and_climatology(self):
         a = self.data['areas']['Argentina']
         self.assertEqual(set(a['skill']), {'cell', 'monthly', 'timing'})
