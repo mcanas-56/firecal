@@ -7,7 +7,9 @@ A fire-season calendar built from NASA FIRMS MODIS and VIIRS hotspot data — Te
 ```
 firecal/
 ├── data/        Raw NASA FIRMS CSVs (gitignored — download locally, never commit)
-├── src/         App and data-processing code (entry point: src/app.py; colours in src/palette.py)
+├── web/         The FireCal page (HTML, CSS, js/ by feature, bundled D3 and land map, data/archive.json)
+├── src/         Data pipeline (load, harmonize, season, page data) and the local server (src/serve.py)
+├── design/      The firecal-demo prototype and its screenshots: the design source of truth (T-05)
 ├── docs/        Design notes (calendar wireframe and palette: docs/t-03-calendar-design.md)
 ├── notebooks/   Exploration notebooks
 ├── tests/       Tests
@@ -71,25 +73,40 @@ The files are public ([FIRMS country yearly data](https://firms.modaps.eosdis.na
 
 ## Run the app
 
-With the virtual environment active, from the repo root:
+From the repo root:
 
 ```bash
-streamlit run src/app.py
+python -m src.serve        # Windows: py -3 -m src.serve
 ```
 
-The app opens in your browser at http://localhost:8501. Stop it with `Ctrl+C` in the terminal.
+That's the only command. It:
 
-On first run (or after you add or change files in `data/`) the app rebuilds the harmonized monthly record from `data/*.csv` itself, which takes a few seconds; you don't need to run `python -m src.harmonize` first. With no data it shows the download command. The page follows the T-03 layout: season summary, monthly activity for Canada (placeholder until the US-04 calendar) and slots for the tasks still to come.
+1. prepares the data from `data/*.csv` with our pipeline: cleans the hotspots (US-01), harmonizes MODIS and VIIRS into one monthly record (US-02) and estimates the fire season (US-05). This takes a few seconds the first time, and runs again only when a CSV changes. The results go to `data/processed/` (local, gitignored).
+2. serves the page at http://localhost:8000 (the next free port if 8000 is taken) and opens your browser. Stop it with `Ctrl+C`.
 
-Each time you open a new terminal, activate the environment again (`source .venv/bin/activate`) before running the app.
+Options: `--port 8080`, `--no-browser`, `--skip-build` (serve the last build). `python -m src.web_data` rebuilds the data without starting the server. With no data yet, the page shows the download command.
 
-Tested setup: Python 3.13.1, pandas 3.1.1, streamlit 1.67.0 (macOS). If the page says "If you can see this, your setup works.", you're ready.
+### What's on the page
+
+- **Area switch** (US-03): Canada | Argentina, plus any other country you download. It drives every section and is kept in the address (`?area=Argentina`).
+- **Fire activity calendar:** one month at a time, every day coloured by its number of hotspot detections. Uses cleaned VIIRS Suomi-NPP detections (MODIS for years without VIIRS). Colours are quartiles of the non-zero days for the selected area and year. Pick the year next to the month; click a day to jump to it on the globe.
+- **Fire season** (US-05): start, peak and end month from the harmonized record.
+- **Month × year calendar** (US-04): harmonized fire cell-days for every month. Tooltips show the VIIRS and MODIS values; click a month to open it in the daily calendar.
+- **Globe:** where the hotspots were, coloured by radiative power. Drag, zoom, reset; at most 300 markers.
+- **Time explorer:** Days / Weeks / Months, with a play button.
+- **Stat cards:** detections, observation window, harmonized activity for the month.
+- **Dark and light themes.**
+- **Report a fire:** marked "coming soon"; the form is disabled and sends nothing.
+
+The design comes from the firecal-demo prototype in `design/` (T-05). Everything runs offline except the two web fonts, which fall back to system fonts.
+
+Tested setup: Python 3.13.1, pandas 3.1.1 (macOS).
 
 ### Troubleshooting
 
-- `streamlit: command not found` → the virtual environment isn't active; run `source .venv/bin/activate`.
-- `Port 8501 is already in use` → another Streamlit is running; stop it, or run `streamlit run src/app.py --server.port 8502`.
-- `python3: command not found` (Windows) → use `python` or `py` instead of `python3`.
+- The page says "No fire data on this laptop yet" → run `python3 scripts/get_data.py`, then start FireCal again.
+- `No module named pandas` → set up first (`bash scripts/setup.sh`), or activate `.venv` and use its Python.
+- `python3: command not found` (Windows) → use `py -3` instead.
 
 ## How we work
 
@@ -172,18 +189,7 @@ Method, results and limits: [docs/harmonization.md](docs/harmonization.md).
 
 ## Fire-season summary (US-05)
 
-Build the monthly record and start the app from the repository root:
-
-```bash
-python -m src.harmonize "data/*.csv"
-streamlit run src/app.py
-```
-
-Choose Canada or Argentina to update the **Start**, **Peak**, and **End** metrics.
-The app reads `data/processed/harmonized_monthly.csv`; if missing, it displays the
-build command. Rebuild that file after changing raw inputs. Processed data stays
-local and gitignored. The reusable UI function is `render_season_summary(monthly)`
-in `src/season_summary.py`, ready for integration into the US-09 app shell.
+The page's **Fire season** cards show the start, peak and end month for the selected area. `python -m src.serve` (or `python -m src.web_data`) computes them from `data/processed/harmonized_monthly.csv` and writes them to `data/processed/web/monthly.json`.
 
 In Python, call `summarize_season(monthly, area, threshold_fraction=0.2)` with the
 US-02 table (`area`, `year`, `month`, `harmonized`). It returns a `SeasonSummary`
@@ -207,20 +213,10 @@ These are descriptive activity estimates, not forecasts or burned-area estimates
 The practice data covers just 2022–2023, so results are not a long-term climate
 baseline. Teammate review and testing on a second laptop remain required.
 
-## Calendar view (US-04a)
+## Month × year calendar (US-04)
 
-`src/calendar_view.py` draws the month × year calendar from the T-03 wireframe as HTML: one row per year (newest first), one column per month, cells coloured with `src/palette.py` on its log scale, peak cells labelled (`16.6k`), a tooltip on every cell, a legend, and optional outlines for unusual years.
-
-```python
-from src.calendar_view import calendar_html, sample_monthly
-
-st.html(calendar_html(sample_monthly('Canada'), flags={2023: 'high', 2020: 'low'}))
-```
-
-The app currently shows it with **sample values** (`sample_monthly`) so the team can agree the layout. US-04 passes the real harmonized rows for the selected area instead: `calendar_html(monthly[monthly.area == area])`.
+The **Month by year** grid on the page shows the harmonized record from US-02: one row per year (newest first), one column per month, coloured by quartiles of the area's non-zero months (the same rule as the daily calendar). Months in the estimated season are underlined. Missing months are striped, never shown as zero. The data comes from `monthly.json` (see `src/web_data.py`); the drawing code is `web/js/monthly.js`. This replaces the US-04a sample calendar that ran in Streamlit.
 
 ## Area selection (US-03)
 
-The **Area** control at the top of the app (Canada | Argentina) drives every section: season summary, calendar, data preview and, later, the map. Canada is the default. The choice is kept in the page address, so `http://localhost:8501/?area=Argentina` opens straight on Argentina; an unknown area falls back to Canada. Areas come from the data, so downloading another country with `get_data.py --countries` adds it to the control.
-
-`render_season_summary(monthly, area=...)` takes the selected area; called without one it shows its own picker, as before.
+The area switch at the top of the page (Canada | Argentina) drives every section: daily calendar, season, month × year calendar, globe and stat cards. Canada is the default. The choice is kept in the page address, so `http://localhost:8000/?area=Argentina` opens straight on Argentina; an unknown area falls back to Canada. Areas come from the data, so downloading another country with `get_data.py --countries` adds it to the switch.

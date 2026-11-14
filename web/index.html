@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FireCal — Fire intelligence, in focus</title>
+<!-- Web fonts are the only network request; system fonts take over offline. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Space+Grotesk:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="styles.css">
+<script>
+  // Apply the saved theme before first paint so the page does not flash.
+  try { var t = localStorage.getItem('firecal-theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {}
+</script>
+<script src="vendor/d3.min.js"></script>
+<script type="module" src="js/main.js"></script>
+</head>
+<body>
+<header>
+  <a class="logo" href="#home" aria-label="FireCal home"><span class="brandicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M13 2c1 6-5 6-3 11 1-2 3-3 4-5 4 4 6 7 3 11-3 4-11 3-12-2C3 11 9 8 8 5c2 1 2 3 2 3s3-3 3-6Z"/></svg></span>FireCal<span style="color:var(--accent)">.</span></a>
+  <nav aria-label="Main navigation">
+    <button id="home-nav" class="active" data-page="home">Home</button>
+    <button id="report-nav" data-page="report">Report a fire</button>
+  </nav>
+  <div class="header-end"><span class="header-note">NASA FIRMS · MODIS + VIIRS</span><button class="iconbtn" id="theme" aria-label="Switch to light mode" title="Toggle colour theme">☼</button></div>
+</header>
+
+<main>
+<section id="no-data" class="no-data" hidden>
+  <p class="eyebrow">One step left</p>
+  <h2>No fire data on this laptop yet.</h2>
+  <p>Download the NASA FIRMS practice set (about 230 MB), then restart FireCal:</p>
+  <pre><code>python3 scripts/get_data.py      # Windows: py -3 scripts\get_data.py
+python -m src.serve</code></pre>
+</section>
+<section id="home-page">
+
+  <!-- Calendar -->
+  <section class="heatmap-panel" aria-labelledby="calendar-heading">
+    <div class="calendar-top">
+      <div><p class="eyebrow">Every day tells a story</p><h2 id="calendar-heading">Fire activity calendar</h2></div>
+      <div class="calendar-top-end">
+        <div class="scale-switch area-switch" role="group" aria-label="Area of interest">
+          <button type="button" class="scale-option selected" data-area="Canada" aria-pressed="true">Canada</button>
+          <button type="button" class="scale-option" data-area="Argentina" aria-pressed="false">Argentina</button>
+        </div>
+        <span class="tag" id="calendar-source">NASA FIRMS</span>
+      </div>
+    </div>
+    <div class="calendar-layout">
+      <div>
+        <div class="calendar-nav">
+          <button id="cal-prev" class="outline" aria-label="Previous calendar month">←</button>
+          <div class="calendar-month-year"><h3 id="cal-month"></h3><select id="calendar-year" aria-label="Calendar year"></select></div>
+          <button id="cal-next" class="outline" aria-label="Next calendar month">→</button>
+        </div>
+        <div class="weekdays" aria-hidden="true"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div>
+        <div id="heatmap-days" class="heatmap-days" aria-label="Daily fire activity calendar"></div>
+      </div>
+      <aside class="calendar-explainer">
+        <p class="section-label">READING THE COLOURS</p>
+        <h3>From quiet days to intense activity.</h3>
+        <p>Colours show daily satellite hotspot counts for the selected area. Click a day to update the globe and timeline.</p>
+        <div class="heat-legend"><span><i style="background:#34463d"></i> No detections</span><span><i style="background:#91aa64"></i> Lower</span><span><i style="background:#d9c46c"></i> Moderate</span><span><i style="background:#e69950"></i> High</span><span><i style="background:#d9684c"></i> Very high</span><span><i class="missing-swatch"></i> No data</span></div>
+        <p id="heat-thresholds" class="helper"></p>
+        <div class="source-note"><strong>Activity, not a danger forecast.</strong><br>Hotspot counts are an activity/severity proxy, not measured fire damage or official fire risk. Colours use quartiles of nonzero daily counts for each area and selected year. Day colours always use daily counts, even in week/month mode.</div>
+      </aside>
+    </div>
+    <p id="calendar-selection" class="helper" aria-live="polite"></p>
+  </section>
+
+  <!-- Fire season (US-05) and month x year harmonized calendar (US-04) -->
+  <section class="heatmap-panel season-panel" aria-labelledby="season-heading">
+    <div class="calendar-top">
+      <div><p class="eyebrow">Every year has a rhythm</p><h2 id="season-heading">Fire season in <span id="season-area">Canada</span></h2></div>
+      <span class="tag">HARMONIZED · MODIS + VIIRS</span>
+    </div>
+    <div class="season-cards">
+      <article class="card"><div class="card-top">Season starts</div><div class="card-value" id="season-start">—</div></article>
+      <article class="card"><div class="card-top">Peak month</div><div class="card-value" id="season-peak">—</div></article>
+      <article class="card"><div class="card-top">Season ends</div><div class="card-value" id="season-end">—</div></article>
+    </div>
+    <p id="season-note" class="helper"></p>
+    <div class="calendar-layout month-layout">
+      <div>
+        <p class="section-label">Month by year · harmonized fire cell-days</p>
+        <div id="month-grid" class="month-grid" aria-label="Harmonized monthly fire activity by year"></div>
+      </div>
+      <aside class="calendar-explainer">
+        <p class="section-label">ONE RECORD, TWO SATELLITES</p>
+        <h3>MODIS and VIIRS, on one scale.</h3>
+        <p>Each cell counts fire cell-days: 0.1° grid cells with at least one detection that day. VIIRS sees more small fires than MODIS, so MODIS is scaled to match where the two overlap. Click a month to open it above.</p>
+        <div class="heat-legend" id="month-legend"></div>
+        <div class="source-note"><strong>How it was harmonized.</strong><br><span id="fit-note"></span></div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- Globe -->
+  <div class="heading">
+    <div><p class="eyebrow">A clearer view of a changing landscape</p><h1>Fire intelligence, in focus.</h1><p class="sub">A world in view. Move through time to explore fire activity, one day at a time.</p></div>
+    <button class="outline" data-page="report"><span style="color:var(--orange)">＋</span> Report a fire</button>
+  </div>
+  <div class="workspace">
+    <aside class="filters">
+      <p class="section-label">Explore the globe</p>
+      <label for="region">Area of interest</label>
+      <select id="region"><option>Canada</option><option>Argentina</option></select>
+      <div id="date-controls">
+        <label for="map-date">Observation date</label>
+        <input type="date" id="map-date">
+        <div class="date-buttons"><button class="outline" id="prev-date">← Previous</button><button class="outline" id="next-date">Next →</button></div>
+        <p class="helper">Choose a year in the calendar, then a day to explore recorded activity.</p>
+      </div>
+      <hr class="divider">
+      <p class="section-label">Globe layers</p>
+      <div class="toggle-row"><label for="show-hotspots">Satellite hotspots</label><input type="checkbox" id="show-hotspots" checked></div>
+      <hr class="divider">
+      <div class="source-note"><strong>NASA FIRMS · <span id="daily-sensor">VIIRS S-NPP</span></strong><br>Cleaned yearly country archives (vegetation fires, nominal/high confidence). Period counts sum all daily detections; the globe shows at most 300 sampled points. Marker colours show radiative power.</div>
+    </aside>
+    <div class="map-wrap">
+      <div id="map">
+        <canvas tabindex="0" id="globe" role="img" aria-label="Interactive globe showing fire observations. Drag to rotate and use the zoom buttons."></canvas>
+        <div class="globe-controls"><button id="zoom-in" aria-label="Zoom in">+</button><button id="zoom-out" aria-label="Zoom out">−</button><button id="reset-globe" aria-label="Reset globe view">⌖</button></div>
+        <div id="globe-tooltip" role="status" hidden></div>
+        <div class="globe-instruction">↔ &nbsp; Drag to rotate · scroll to zoom</div>
+        <div class="globe-credit">Land: Natural Earth · Hotspots: NASA FIRMS</div>
+      </div>
+      <div class="map-badge"><span class="dot" style="background:var(--orange)"></span><span id="map-label">ARCHIVE</span></div>
+      <div id="empty-map" class="map-empty" hidden></div>
+      <div class="timeline">
+        <div class="timeline-heading"><span class="section-label">Time Explorer</span><output id="slider-date" for="date-slider"></output></div>
+        <div class="time-toolbar">
+          <div class="scale-switch" role="group" aria-label="Timeline scale">
+            <button type="button" class="scale-option selected" data-scale="day" aria-pressed="true">Days</button>
+            <button type="button" class="scale-option" data-scale="week" aria-pressed="false">Weeks</button>
+            <button type="button" class="scale-option" data-scale="month" aria-pressed="false">Months</button>
+          </div>
+        </div>
+        <div class="timeline-row"><button id="play-dates" aria-label="Play through the year">▶</button><span>JAN</span><input type="range" id="date-slider" min="0" max="0" step="1" value="0" aria-label="Observation period"><span>DEC</span></div>
+        <div class="timeline-foot" id="timeline-foot"></div>
+      </div>
+      <div class="map-legend"><b>HOTSPOT INTENSITY</b><span><i class="dot" style="background:#f7d68c"></i> Lower</span><span><i class="dot" style="background:#ffa05d"></i> Medium</span><span><i class="dot" style="background:#f06047"></i> Higher</span></div>
+    </div>
+  </div>
+  <div class="under-map"><span id="map-detail" aria-live="polite">Preparing map…</span><span>● Rotate the globe to explore · hover a hotspot for details</span></div>
+
+  <!-- Stat cards -->
+  <div class="cards">
+    <article class="card"><div class="card-top">Hotspot detections <span class="tag">NASA FIRMS</span></div><div class="card-value" id="hotspot-count">—</div><p class="card-foot" id="count-note">In the selected area</p></article>
+    <article class="card"><div class="card-top">Observation window <span style="color:var(--accent)">↗</span></div><div class="card-value" id="window-stat">—</div><p class="card-foot" id="window-note"></p></article>
+    <article class="card"><div class="card-top">Harmonized month <span style="color:var(--orange)">◎</span></div><div class="card-value" id="month-stat">—</div><p class="card-foot" id="month-note">Fire cell-days in the selected month</p></article>
+  </div>
+</section>
+
+<!-- Report a fire: layout only, nothing is submitted or saved -->
+<section id="report-page" hidden>
+  <div class="heading">
+    <div><p class="eyebrow">Awareness starts on the ground</p><h1>See something. Share it.</h1><p class="sub">Help build a clearer picture with a community fire observation.</p></div>
+    <span class="tag">COMING SOON · NOT AN EMERGENCY SERVICE</span>
+  </div>
+  <div class="report-layout">
+    <form id="report-form" class="report-form" novalidate><fieldset disabled class="report-fieldset">
+      <h2 class="form-section"><span class="step">01</span> Where and when</h2>
+      <div class="field">
+        <label>Observation location</label>
+        <p class="helper">Enter the coordinates of what you saw.</p>
+        <div class="form-grid">
+          <div><label for="latitude">Latitude</label><input type="number" id="latitude" min="-90" max="90" step="any" placeholder="e.g. 49.2827"></div>
+          <div><label for="longitude">Longitude</label><input type="number" id="longitude" min="-180" max="180" step="any" placeholder="e.g. -123.1207"></div>
+        </div>
+      </div>
+      <div class="form-grid">
+        <div class="field"><label for="observed-at">Local observation time</label><input type="datetime-local" id="observed-at"></div>
+        <div class="field"><label for="observation">What do you see?</label><select id="observation"><option>Visible flames</option><option>Smoke plume</option><option>Smouldering vegetation</option><option>Other observation</option></select></div>
+      </div>
+      <div class="field"><label for="description">Additional details</label><textarea id="description" rows="3" maxlength="2000" placeholder="Describe the smoke, nearby landmarks, or other useful details…"></textarea></div>
+      <hr class="divider">
+      <h2 class="form-section"><span class="step">02</span> Add a photo</h2>
+      <label class="upload">↑ &nbsp; A picture can add important context.<br><small>Optional · JPG, PNG or WebP · up to 10 MB</small><input type="file" id="photo" accept="image/jpeg,image/png,image/webp"></label>
+      <hr class="divider">
+      <h2 class="form-section"><span class="step">03</span> About the reporter</h2>
+      <div class="form-grid">
+        <div class="field"><label for="reporter-name">Name</label><input id="reporter-name" maxlength="100" placeholder="Your name"></div>
+        <div class="field"><label for="reporter-email">Email</label><input id="reporter-email" type="email" placeholder="you@example.com"></div>
+        <div class="field full"><label for="reporter-phone">Phone · optional</label><input id="reporter-phone" type="tel" placeholder="Contact number"></div>
+      </div>
+      <label class="check-label"><input type="checkbox" id="acknowledge"><span>I understand FireCal does not alert emergency responders.</span></label>
+      <button class="primary" type="submit" style="width:100%">Reporting is coming soon</button>
+      </fieldset>
+      <p class="helper report-note">Community reports are the next step for FireCal. This form is a preview and sends nothing.</p>
+    </form>
+    <aside class="report-aside">
+      <div class="notice"><h3>Safety comes first.</h3><p>If there is immediate danger, contact local emergency services directly. FireCal does not alert a fire service.</p><p>Observe from a safe distance. Never approach a fire to take a photograph.</p></div>
+      <div class="aside-card"><h3>A little context goes a long way.</h3><ol><li>Check your observation location.</li><li>Describe what you can see safely.</li><li>Add a photo, if you have one.</li></ol></div>
+      <div class="aside-card"><h3>Your information, your control.</h3><p>When reporting opens, you choose what to share. Today this page sends nothing anywhere.</p></div>
+    </aside>
+  </div>
+</section>
+
+<footer><span><strong>FireCal.</strong> &nbsp; Team Lanesra · NASA Space Apps Challenge</span><span id="footer-data">Data: NASA FIRMS MODIS + VIIRS · Hotspots show fire activity, not fire danger</span></footer>
+</main>
+</body>
+</html>
