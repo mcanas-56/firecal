@@ -6,7 +6,8 @@ which find a Python 3.11+ and Git first. It can also be run directly:
     python3 scripts/setup_env.py   # Windows: py -3 scripts/setup_env.py
 
 It checks Git and Python, creates .venv, installs requirements.txt, smoke-tests
-the imports and starts the app (python -m src.serve) for a few seconds. Standard library
+the imports, starts the app (python -m src.serve) for a few seconds, and downloads any
+missing NASA FIRMS files of the default 2012-2023 set (--skip-data skips that). Standard library
 only, so it runs before anything is installed. Output is plain ASCII so it
 prints the same on macOS and Windows terminals.
 """
@@ -25,7 +26,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 VENV = ROOT / ".venv"
 MIN_PYTHON = (3, 11)
-IMPORTS = ["pandas"]  # the page itself needs no Python packages; pandas builds its data
+IMPORTS = ["pandas", "pyarrow"]  # the page itself needs no Python packages; pandas builds its data, pyarrow caches it
 
 # step name -> Machine readiness column in the team doc
 READINESS = {
@@ -161,13 +162,38 @@ def app_starts(timeout: float = 20.0) -> bool:
     return ok
 
 
-def check_data() -> None:
-    csvs = sorted(p.name for p in (ROOT / "data").glob("*.csv"))
-    if csvs:
-        record("Data files", "PASS", f"{len(csvs)} CSV(s) in data/")
+def expected_data_files() -> list[str]:
+    """File names of the default download set in scripts/get_data.py (2012-2023)."""
+    from get_data import DEFAULT_COUNTRIES, DEFAULT_SENSORS, DEFAULT_YEARS, file_name
+    return [file_name(s, y, c) for s in DEFAULT_SENSORS for y in DEFAULT_YEARS for c in DEFAULT_COUNTRIES]
+
+
+def download_data() -> None:
+    """Fetch the default files not yet in data/ with scripts/get_data.py (skips existing ones)."""
+    missing = [n for n in expected_data_files() if not (ROOT / "data" / n).exists()]
+    if not missing:
+        return
+    print(f"\nDownloading {len(missing)} missing NASA FIRMS file(s) (2012-2023, up to ~740 MB)...", flush=True)
+    proc = subprocess.run([sys.executable, str(ROOT / "scripts" / "get_data.py")], cwd=ROOT)
+    if proc.returncode == 0:
+        record("Download data", "PASS", f"{len(missing)} file(s) downloaded into data/")
     else:
-        get = "py -3 scripts\\get_data.py" if sys.platform == "win32" else "python3 scripts/get_data.py"
-        record("Data files", "WARN", f"data/ is empty. Download the practice set (~230 MB) with: {get}")
+        record("Download data", "WARN", "some files did not download; run setup or scripts/get_data.py again")
+
+
+def check_data() -> None:
+    csvs = {p.name for p in (ROOT / "data").glob("*.csv")}
+    get = "py -3 scripts\\get_data.py" if sys.platform == "win32" else "python3 scripts/get_data.py"
+    expected = expected_data_files()
+    missing = [n for n in expected if n not in csvs]
+    if not csvs:
+        record("Data files", "WARN", f"data/ is empty. Download 2012-2023 (48 files, ~740 MB) with: {get}")
+    elif missing:
+        record("Data files", "WARN", f"{len(expected) - len(missing)} of {len(expected)} default files in data/ "
+                                     f"({len(missing)} missing, e.g. {missing[0]}). Add them with: {get}")
+    else:
+        record("Data files", "PASS", f"all {len(expected)} default files (2012-2023) in data/"
+                                     + (f", plus {len(csvs) - len(expected)} more" if len(csvs) > len(expected) else ""))
 
 
 def summary() -> int:
@@ -202,6 +228,8 @@ def summary() -> int:
 def main() -> int:
     parser = argparse.ArgumentParser(description="FireCal one-command setup")
     parser.add_argument("--skip-app", action="store_true", help="skip starting the app headless")
+    parser.add_argument("--skip-data", action="store_true",
+                        help="don't download missing NASA FIRMS files (2012-2023, ~740 MB)")
     args = parser.parse_args()
 
     print(f"FireCal setup in {ROOT}\n", flush=True)
@@ -212,6 +240,10 @@ def main() -> int:
             record("App starts", "SKIP", "--skip-app")
         else:
             app_starts()
+    if args.skip_data:
+        record("Download data", "SKIP", "--skip-data")
+    else:
+        download_data()
     check_data()
     del git_ok  # reported in the summary; a missing git does not block the Python steps
     return summary()

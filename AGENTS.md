@@ -11,7 +11,7 @@ To set up, run scripts/setup:
 
 When asked to "set up my environment" (or `/setup` in Claude Code), run the script for this OS from the repo root, show the summary it prints, explain the first FAIL in plain words with its fix, and list the Machine readiness cells it says to mark Done. Do not install packages another way or change repo files while setting up.
 
-If `data/` has no CSVs after setup, offer to download the NASA FIRMS practice set (about 230 MB, a minute or two) and run it if they agree: `python3 scripts/get_data.py` (Windows: `py -3 scripts\get_data.py`). Re-running skips files already downloaded. `--list` shows the files; `--years`, `--countries` and `--sensors` change the set.
+Setup downloads any missing file of the NASA FIRMS data, 2012-2023 (48 files, about 740 MB, a few minutes; `--skip-data` skips it). If files are still missing after setup, offer to download them and run it if they agree: `python3 scripts/get_data.py` (Windows: `py -3 scripts\get_data.py`). Re-running skips files already downloaded. `--list` shows the files; `--years`, `--countries` and `--sensors` change the set.
 
 ## Layout
 
@@ -19,14 +19,14 @@ If `data/` has no CSVs after setup, offer to download the NASA FIRMS practice se
 - `design/prototype/` the firecal-demo prototype and `design/screenshots/`: the design source of truth. Port its CSS, markup and D3 code rather than redrawing from screenshots
 - `src/serve.py` the one-command start: prepares the data, then serves `web/` on localhost (standard library only). `/data/archive.json` and `/data/monthly.json` are served from `data/processed/web/`
 - `src/web_data.py` builds the page data from `data/*.csv` with the pipeline below: `archive.json` (date -> area -> {total, frp, points: [[lat, lon, frp]]}, daily VIIRS S-NPP, MODIS where no VIIRS) and `monthly.json` (per area: harmonized months, MODIS->VIIRS fit, season, daily sensor)
-- `src/load_data.py` loads and cleans FIRMS CSVs (US-01), `src/harmonize.py` builds the harmonized monthly record (US-02), `src/season_summary.py` estimates the fire season (US-05), `src/app_data.py` data folder and staleness helpers (US-09), `src/palette.py` the T-03 palette notes
+- `src/load_data.py` loads and cleans FIRMS CSVs (US-01), `src/harmonize.py` builds the harmonized monthly record (US-02; its command line caches daily cell-days per CSV in `data/processed/cells/`, US-14), `src/season_summary.py` estimates the fire season (US-05), `src/app_data.py` data folder and staleness helpers (US-09), `src/palette.py` the T-03 palette notes
 - `docs/harmonization.md` method note for US-02: read before changing the harmonization
 - `data/` raw NASA FIRMS CSVs, local only (gitignored)
 - `notebooks/` exploration
 - `tests/` tests
 - `scripts/setup.sh`, `scripts/setup.ps1` setup entry points; both find Python 3.11+ and Git, then run `scripts/setup_env.py` (venv, install, smoke test, summary)
-- `scripts/get_data.py` downloads the FIRMS practice CSVs into `data/` (default: MODIS + VIIRS Suomi-NPP, 2022-2023, Canada + Argentina)
-- `requirements.txt` Python dependencies (pandas only; the page needs no Python packages)
+- `scripts/get_data.py` downloads the FIRMS CSVs into `data/` (default: MODIS + VIIRS Suomi-NPP, 2012-2023, Canada + Argentina: 48 files, ~740 MB; setup warns when any are missing)
+- `requirements.txt` Python dependencies (pandas, and pyarrow for the Parquet cell-day cache; the page needs no Python packages)
 
 ## Running
 

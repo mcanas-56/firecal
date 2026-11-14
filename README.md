@@ -57,17 +57,17 @@ All three run the same script. It checks Git and Python, creates `.venv`, instal
    pip install -r requirements.txt
    ```
 
-4. Download the practice data (see below).
+4. Setup also downloads the data (see below); add `--skip-data` to skip it.
 
-## Practice data
+## Data
 
-The app reads NASA FIRMS hotspot CSVs from `data/`. Download the practice set (MODIS + VIIRS Suomi-NPP, 2022–2023, Canada + Argentina: 8 files, about 230 MB) straight from NASA with:
+The app reads NASA FIRMS hotspot CSVs from `data/`. Download the record (MODIS + VIIRS Suomi-NPP, 2012–2023, Canada + Argentina: 48 files, about 740 MB, a few minutes) straight from NASA with:
 
 ```bash
 python3 scripts/get_data.py          # Windows: py -3 scripts\get_data.py
 ```
 
-`/setup` (or Codex setup) offers to run this for you. Running it again only downloads what's missing. Change the set with flags, for example `--years 2012-2023`, `--countries Canada`, `--sensors modis,viirs-snpp,viirs-jpss1`; `--list` shows the files without downloading.
+Setup runs this for you (unless `--skip-data`). Running it again only downloads what's missing, so if you already have the old 2022–2023 practice set, just run it again to add 2012–2021; the setup check warns while any of the 48 files are missing. Change the set with flags, for example `--years 2022-2023` for a quick small set, `--countries Canada`, `--sensors modis,viirs-snpp,viirs-jpss1`; `--list` shows the files without downloading.
 
 The files are public ([FIRMS country yearly data](https://firms.modaps.eosdis.nasa.gov/country/), no login) and stay on your laptop: `data/` is gitignored, and GitHub rejects files over 100 MB anyway. At the event, NASA's official datasets also go in `data/`.
 
@@ -102,7 +102,7 @@ Options: `--port 8080`, `--no-browser`, `--skip-build` (serve the last build). `
 
 The design comes from the firecal-demo prototype in `design/` (T-05). Everything runs offline except the two web fonts, which fall back to system fonts.
 
-Tested setup: Python 3.13.1, pandas 3.1.1 (macOS).
+Tested setup: Python 3.13.1, pandas 3.1.1, pyarrow 26.0.1 (macOS).
 
 ### Troubleshooting
 
@@ -169,13 +169,13 @@ harmonization belongs to US-02.
 
 ## Harmonize into one monthly record (US-02)
 
-From the repo root, with `.venv` activated and the practice data in `data/`:
+From the repo root, with `.venv` activated and the data in `data/`:
 
 ```bash
 python -m src.harmonize data/*.csv
 ```
 
-This runs the US-01 loader, then turns MODIS Aqua and VIIRS Suomi-NPP detections into fire cell-days (each 0.1° grid cell counted once per day per sensor), sums them by month, finds days one satellite was not recording (e.g. Suomi NPP offline 27 Jul–10 Aug 2022), fits one VIIRS/MODIS factor per area on the overlap months without those days, fills VIIRS gap days with MODIS × factor, and writes `data/processed/harmonized_monthly.csv` (one row per area-month, local only). It prints the factor, R², Pearson r and median % difference per area, and the gap days it found. Options: `--grid 0.25`, `--include-terra`, `--out path.csv`, `--quiet`.
+This runs the US-01 loader, then turns MODIS Aqua and VIIRS Suomi-NPP detections into fire cell-days (each 0.1° grid cell counted once per day per sensor), sums them by month, finds days one satellite was not recording (e.g. Suomi NPP offline 27 Jul–10 Aug 2022), fits one VIIRS/MODIS factor per area on the overlap months without those days, fills VIIRS gap days with MODIS × factor, and writes `data/processed/harmonized_monthly.csv` (one row per area-month, local only). It prints the factor, R², Pearson r and median % difference per area, and the gap days it found. It also prints the factor fitted on each year alone and a single-factor vs power-law comparison, and writes them beside the output (`harmonized_monthly_factors_by_year.csv`, `harmonized_monthly_methods.csv`). Each CSV is read once into daily cell-days cached as Parquet in `data/processed/cells/`, so rebuilding 2012–2023 needs about 1.7 GB of memory the first time and 0.5 GB after (`--no-cache` loads everything at once instead). Options: `--grid 0.25`, `--include-terra`, `--out path.csv`, `--quiet`, `--cache-dir path`, `--no-cache`.
 
 In Python:
 
@@ -212,7 +212,7 @@ Negative/nonfinite values, duplicate month keys and invalid month/year fields
 raise descriptive errors. Only the selected area's records are evaluated.
 
 These are descriptive activity estimates, not forecasts or burned-area estimates.
-The practice data covers just 2022–2023, so results are not a long-term climate
+The default data covers 2012–2023 (12 years), which is still short for a long-term climate
 baseline. Teammate review and testing on a second laptop remain required.
 
 ## Month × year calendar (US-04)

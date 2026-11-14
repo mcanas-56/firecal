@@ -1,9 +1,9 @@
-"""Download NASA FIRMS practice data into data/ (T-04).
+"""Download NASA FIRMS data into data/ (T-04; default 2012-2023 since US-13).
 
 Public yearly country CSVs from https://firms.modaps.eosdis.nasa.gov/country/ (no login).
 Standard library only, works on macOS and Windows. Run from anywhere:
 
-    python3 scripts/get_data.py                 # Windows: py -3 scripts\\get_data.py
+    python3 scripts/get_data.py                 # 2012-2023, 48 files, ~740 MB. Windows: py -3 scripts\\get_data.py
     python3 scripts/get_data.py --years 2019-2023 --countries Canada
     python3 scripts/get_data.py --list          # show what would be downloaded
 
@@ -28,7 +28,8 @@ BASE = "https://firms.modaps.eosdis.nasa.gov/data/country"
 HEADERS = {"User-Agent": "firecal-get-data/1.0"}
 
 DEFAULT_SENSORS = ["modis", "viirs-snpp"]
-DEFAULT_YEARS = [2022, 2023]
+DEFAULT_YEARS = list(range(2012, 2024))  # the full MODIS + VIIRS S-NPP overlap (US-13)
+DEFAULT_YEARS_TEXT = "2012-2023"
 DEFAULT_COUNTRIES = ["Canada", "Argentina"]
 SENSOR_CHOICES = ["modis", "viirs-snpp", "viirs-jpss1", "viirs-jpss2"]
 FIRST_YEAR = {"modis": 2000, "viirs-snpp": 2012, "viirs-jpss1": 2018, "viirs-jpss2": 2023}
@@ -124,8 +125,8 @@ def download(sensor: str, year: int, country: str, force: bool, retries: int = 3
 
 
 def main() -> int:
-    p = argparse.ArgumentParser(description="Download NASA FIRMS practice CSVs into data/")
-    p.add_argument("--years", default=",".join(map(str, DEFAULT_YEARS)),
+    p = argparse.ArgumentParser(description="Download NASA FIRMS CSVs into data/ (default: 2012-2023)")
+    p.add_argument("--years", default=DEFAULT_YEARS_TEXT,
                    help="years, e.g. 2023 or 2019-2023 or 2012,2023 (default: %(default)s)")
     p.add_argument("--countries", default=",".join(DEFAULT_COUNTRIES),
                    help="FIRMS country names, comma separated; spaces become underscores (default: %(default)s)")
