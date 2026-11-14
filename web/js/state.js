@@ -11,6 +11,7 @@ export const state = {
   years: [],            // years found in the archive
   year: 2023,
   area: 'Canada',
+  mode: 'past',         // 'past' (archive) | 'live' (coming soon: no live feed yet)
   scale: 'day',         // 'day' | 'week' | 'month'
   date: '2023-07-01',   // the selected day; the selected period is the one containing it
   calMonth: 6,          // month shown in the calendar (0 = January)
@@ -74,7 +75,15 @@ export function stopPlayback() {
   btn.setAttribute('aria-label', 'Play through the year');
 }
 
+export function setMode(mode) {
+  state.mode = mode;
+  if (mode === 'live') stopPlayback();
+  render();
+}
+
+// Choosing any date or period means looking at the archive, so it leaves Live view.
 export function setDate(date) {
+  state.mode = 'past';
   const y = String(state.year);
   state.date = date && date.startsWith(y) ? date : y + '-01-01';
   state.calMonth = Number(state.date.slice(5, 7)) - 1;
@@ -105,5 +114,7 @@ export function setArea(area) {
     history.replaceState(null, '', url);
   } catch (e) { /* address not updatable (e.g. file://): selection still works */ }
   document.dispatchEvent(new CustomEvent('firecal:fit-area'));
+  const mode = state.mode;     // switching area keeps Live view if it is on
   setDate(state.date);
+  if (mode !== state.mode) setMode(mode);
 }

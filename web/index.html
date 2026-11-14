@@ -48,8 +48,16 @@ python -m src.serve</code></pre>
   <div class="workspace">
     <aside class="filters">
       <p class="section-label">Explore the globe</p>
+      <div class="segmented" role="group" aria-label="Globe mode">
+        <button type="button" id="live-mode" data-mode="live" aria-pressed="false">● Live view</button>
+        <button type="button" id="past-mode" data-mode="past" class="selected" aria-pressed="true">Past data</button>
+      </div>
       <label for="region">Area of interest</label>
       <select id="region"><option>Canada</option><option>Argentina</option></select>
+      <div id="live-note" hidden>
+        <label>Observation window</label>
+        <div class="source-note"><strong>Last 24 hours · coming soon</strong><br>Live view will show near-real-time NASA FIRMS hotspots as they are detected. Until then, Past data shows the archive.</div>
+      </div>
       <div id="date-controls">
         <label for="map-date">Observation date</label>
         <input type="date" id="map-date">
@@ -72,6 +80,11 @@ python -m src.serve</code></pre>
       </div>
       <div class="map-badge"><span class="dot" style="background:var(--orange)"></span><span id="map-label">ARCHIVE</span></div>
       <div id="empty-map" class="map-empty" hidden></div>
+      <div id="live-panel" class="map-empty live-panel" hidden>
+        <p class="eyebrow">Live view · coming soon</p>
+        <p>Near-real-time hotspots from the last 24 hours will appear here once FireCal connects to the NASA FIRMS live feed.</p>
+        <button type="button" class="primary" id="live-back">Explore past data</button>
+      </div>
       <div class="timeline">
         <div class="timeline-heading"><span class="section-label">Time Explorer</span><output id="slider-date" for="date-slider"></output></div>
         <div class="time-toolbar">

@@ -103,7 +103,8 @@ class OfflineTests(unittest.TestCase):
     def test_prototype_and_demo_features_are_gone(self):
         html = (WEB / 'index.html').read_text(encoding='utf-8')
         js = ''.join(p.read_text(encoding='utf-8') for p in (WEB / 'js').glob('*.js'))
-        for marker in ('live-mode', 'show-reports', 'geolocation', 'Your demo reports', 'cityRisk', 'RISK OUTLOOK'):
+        for marker in ('show-reports', 'geolocation', 'Your demo reports', 'cityRisk', 'RISK OUTLOOK',
+                       'synthetic('):   # Live view must not invent hotspots
             self.assertNotIn(marker.lower(), (html + js).lower(), marker)
         page_text = re.sub(r'<!--.*?-->|<script.*?</script>|<[^>]+>', ' ', html, flags=re.S).lower()
         for word in ('prototype', 'simulated', 'demo'):   # nothing on screen says it is a mock-up

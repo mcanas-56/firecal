@@ -229,3 +229,7 @@ footer{display:flex;justify-content:space-between;border-top:1px solid var(--lin
 @media(prefers-reduced-motion:reduce){.ticker-track{animation:none}}
 @media(max-width:620px){.ticker-label{padding:0 14px;font-size:9px}.ticker-label .tag{display:none}}
 #home-page>.cards{margin-bottom:30px}
+.live-panel{width:300px;z-index:460}
+.live-panel p:not(.eyebrow){font-size:12px;color:var(--muted);margin:0 0 14px}
+.live-panel .eyebrow{margin-bottom:8px}
+#live-mode{display:inline-flex;align-items:center;justify-content:center;gap:2px}

@@ -1,6 +1,6 @@
 // Entry point: wires the features together and loads the data src/web_data.py builds
 // from data/*.csv (served by `python -m src.serve` at /data/archive.json and /data/monthly.json).
-import { $, state, onRender, render, selectedPeriod, periodDays, periodLabel, setArea, MAX_MARKERS } from './state.js';
+import { $, state, onRender, render, selectedPeriod, periodDays, periodLabel, setArea, setMode, MAX_MARKERS } from './state.js';
 import { initCalendar } from './calendar.js';
 import { initGlobe, setPoints } from './globe.js';
 import { initTimeline } from './timeline.js';
@@ -45,8 +45,33 @@ function renderArea() {
   $('calendar-source').textContent = `${state.year} · NASA FIRMS · ${sensor}`;
 }
 
+// Live view is part of the MVP layout but has no feed yet: it says so instead of showing
+// invented hotspots, and any date choice returns to Past data.
+function renderMode() {
+  const live = state.mode === 'live';
+  for (const [id, on] of [['live-mode', live], ['past-mode', !live]]) {
+    $(id).classList.toggle('selected', on);
+    $(id).setAttribute('aria-pressed', String(on));
+  }
+  $('live-note').hidden = !live;
+  $('date-controls').hidden = live;
+  $('live-panel').hidden = !live;
+}
+
+function renderLive() {
+  $('map-label').textContent = 'LIVE VIEW · COMING SOON';
+  $('hotspot-count').textContent = '—';
+  $('count-note').textContent = `Live feed coming soon · ${state.area}`;
+  $('window-stat').textContent = '24 hours';
+  $('window-note').textContent = 'Live view preview';
+  $('map-detail').textContent = `${state.area} · Live view is coming soon · choose Past data to explore the archive`;
+  $('empty-map').hidden = true;
+  setPoints([]);
+}
+
 // Globe markers, map caption and stat cards for the selected area and period.
 function renderSelection() {
+  if (state.mode === 'live') { renderLive(); return; }
   const p = selectedPeriod();
   const label = periodLabel(p);
   const area = state.area;
@@ -120,12 +145,16 @@ function init() {
   initMonthly();
   initTicker();
   initTimeline();
+  onRender(renderMode);
   onRender(renderArea);
   onRender(renderSelection);
 
   document.querySelectorAll('[data-area]').forEach((btn) => { btn.onclick = () => setArea(btn.dataset.area); });
   $('region').onchange = () => setArea($('region').value);
   $('show-hotspots').onchange = renderSelection;
+  $('live-mode').onclick = () => setMode('live');
+  $('past-mode').onclick = () => setMode('past');
+  $('live-back').onclick = () => setMode('past');
   document.dispatchEvent(new CustomEvent('firecal:fit-area'));
   render();
   loadData();

@@ -90,6 +90,7 @@ Options: `--port 8080`, `--no-browser`, `--skip-build` (serve the last build). `
 
 - **Fire activity ticker:** the scrolling bar under the header. For the selected date or period it shows, per area, the activity level (calendar colours) and detections, the fire-season status, and the harmonized month vs the same month in another year. Real data only; hover or ⏸ pauses it.
 - **Area switch** (US-03): Canada | Argentina, plus any other country you download. It drives every section and is kept in the address (`?area=Argentina`).
+- **Live view / Past data:** the switch above the globe. Past data (default) explores the archive. Live view is in the MVP as "coming soon": it will show near-real-time NASA FIRMS hotspots from the last 24 hours once a live feed is connected, and shows no invented data until then.
 - **Globe:** where the hotspots were, coloured by radiative power. Drag, zoom, reset; at most 300 markers.
 - **Time explorer:** Days / Weeks / Months, with a play button.
 - **Stat cards:** detections, observation window, harmonized activity for the month.
