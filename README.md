@@ -10,7 +10,7 @@ firecal/
 ├── src/         App and data-processing code (entry point: src/app.py)
 ├── notebooks/   Exploration notebooks
 ├── tests/       Tests
-├── scripts/     setup.sh (macOS) / setup.ps1 (Windows) and the setup engine
+├── scripts/     setup.sh (macOS) / setup.ps1 (Windows), the setup engine, get_data.py
 ├── .claude/     Shared Claude Code commands (/setup)
 ├── AGENTS.md    Project context and rules for coding agents (Codex reads it)
 ├── CLAUDE.md    Imports AGENTS.md for Claude Code
@@ -54,7 +54,19 @@ All three run the same script. It checks Git and Python, creates `.venv`, instal
    pip install -r requirements.txt
    ```
 
-4. Put the NASA FIRMS archive CSVs (MODIS and VIIRS, Canada and Argentina) in `data/`. They stay on your laptop only.
+4. Download the practice data (see below).
+
+## Practice data
+
+The app reads NASA FIRMS hotspot CSVs from `data/`. Download the practice set (MODIS + VIIRS Suomi-NPP, 2022–2023, Canada + Argentina: 8 files, about 230 MB) straight from NASA with:
+
+```bash
+python3 scripts/get_data.py          # Windows: py -3 scripts\get_data.py
+```
+
+`/setup` (or Codex setup) offers to run this for you. Running it again only downloads what's missing. Change the set with flags, for example `--years 2012-2023`, `--countries Canada`, `--sensors modis,viirs-snpp,viirs-jpss1`; `--list` shows the files without downloading.
+
+The files are public ([FIRMS country yearly data](https://firms.modaps.eosdis.nasa.gov/country/), no login) and stay on your laptop: `data/` is gitignored, and GitHub rejects files over 100 MB anyway. At the event, NASA's official datasets also go in `data/`.
 
 ## Run the app
 

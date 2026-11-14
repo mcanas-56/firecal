@@ -174,7 +174,8 @@ def check_data() -> None:
     if csvs:
         record("Data files", "PASS", f"{len(csvs)} CSV(s) in data/")
     else:
-        record("Data files", "WARN", "data/ is empty. Not required for setup; see README for the FIRMS practice files")
+        get = "py -3 scripts\\get_data.py" if sys.platform == "win32" else "python3 scripts/get_data.py"
+        record("Data files", "WARN", f"data/ is empty. Download the practice set (~230 MB) with: {get}")
 
 
 def summary() -> int:

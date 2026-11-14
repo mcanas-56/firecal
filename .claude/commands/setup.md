@@ -14,4 +14,4 @@ Then report:
 - The summary block the script printed, as is.
 - If anything FAILed: the first failure in plain words and its exact fix, then offer to run `/setup` again once it's fixed.
 - If it PASSed: the Machine readiness cells to set to Done in their row of the team doc, a reminder to check VS Code, their coding agent and GitHub CLI (`gh auth status`) by hand, and how to start the app (`source .venv/bin/activate` then `streamlit run src/app.py`; Windows: `.venv\Scripts\activate` then `streamlit run src/app.py`).
-- If `data/` is empty: the NASA FIRMS CSVs go there (see README) and are never committed.
+- If `data/` is empty: ask whether to download the NASA FIRMS practice set now (about 230 MB, a minute or two). If yes, run `python3 scripts/get_data.py` (Windows: `py -3 scripts\get_data.py`), show its result, and remind them to mark Data Done. The files stay in `data/` and are never committed.
