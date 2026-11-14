@@ -24,6 +24,7 @@ use the harmonized record.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
 import time
@@ -38,8 +39,21 @@ from src.harmonize import FILE_PATTERN, harmonize
 from src.load_data import load_hotspots
 from src.season_summary import summarize_season
 
+# Code that shapes the page data. Editing any of these (after a git pull, say) makes the
+# next `python -m src.serve` rebuild, so every laptop shows what the current code computes.
+PIPELINE_FILES = ('load_data.py', 'harmonize.py', 'season_summary.py', 'web_data.py', 'app_data.py')
 POINTS_PER_DAY = 60          # sampled globe markers per area and day (counts use every detection)
 SENSOR_LABEL = {'viirs': 'VIIRS S-NPP', 'modis': 'MODIS'}
+
+
+def pipeline_version() -> str:
+    """Fingerprint of the pipeline code (line endings ignored, so Windows checkouts match)."""
+    h = hashlib.sha256()
+    src = Path(__file__).resolve().parent
+    for name in PIPELINE_FILES:
+        h.update(name.encode())
+        h.update((src / name).read_bytes().replace(b'\r\n', b'\n'))
+    return h.hexdigest()[:16]
 
 
 def web_dir(folder: Path) -> Path:
@@ -153,6 +167,7 @@ def monthly_summary(table: pd.DataFrame, fits: pd.DataFrame, chosen: dict, files
             'daily_sensor': {str(y): SENSOR_LABEL[p['sensor']] for (a, y), p in sorted(chosen.items()) if a == area},
         }
     return {'built': datetime.now(timezone.utc).isoformat(timespec='seconds'),
+            'pipeline': pipeline_version(),
             'files': [p.name for p in files], 'daily_gaps': gaps or {}, 'areas': areas}
 
 
@@ -186,15 +201,39 @@ def build(folder: Path | None = None, *, verbose: bool = True) -> dict:
     return report
 
 
+def _built_with(folder: Path) -> dict:
+    try:
+        meta = json.loads((web_dir(folder) / 'monthly.json').read_text(encoding='utf-8'))
+        return {'pipeline': meta.get('pipeline'), 'files': sorted(meta.get('files', []))}
+    except (OSError, ValueError):
+        return {}
+
+
+def why_rebuild(folder: Path, files: list[Path]) -> str | None:
+    """Reason the page data is out of date, or None when it is current."""
+    if not all(p.exists() for p in outputs(folder)):
+        return 'first build'
+    built = _built_with(folder)
+    if built.get('pipeline') != pipeline_version():
+        return 'the FireCal code changed'
+    if built.get('files') != sorted(p.name for p in files):
+        return 'data files were added or removed'
+    if any(is_stale(p, files) for p in outputs(folder)):
+        return 'a data file changed'
+    return None
+
+
 def ensure(folder: Path | None = None, *, verbose: bool = True) -> str:
-    """Rebuild when outputs are missing or a CSV is newer. Returns 'built', 'cached' or 'no_data'."""
+    """Rebuild when the data is missing or out of date (new or changed CSVs, or new pipeline
+    code after a git pull). Returns 'built', 'cached' or 'no_data'."""
     folder = folder or data_dir()
     files = csv_inputs(folder)
     if not files:
         return 'cached' if all(p.exists() for p in outputs(folder)[:2]) else 'no_data'
-    if any(is_stale(p, files) for p in outputs(folder)):
+    reason = why_rebuild(folder, files)
+    if reason:
         if verbose:
-            print('Preparing FireCal data from data/*.csv (takes a few seconds)...', flush=True)
+            print(f'Preparing FireCal data from data/*.csv ({reason}; about 20-30 seconds for 2012-2023)...', flush=True)
         build(folder, verbose=verbose)
         return 'built'
     return 'cached'
