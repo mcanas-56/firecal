@@ -10,12 +10,28 @@ firecal/
 ├── src/         App and data-processing code (entry point: src/app.py)
 ├── notebooks/   Exploration notebooks
 ├── tests/       Tests
+├── scripts/     setup.sh (macOS) / setup.ps1 (Windows) and the setup engine
+├── .claude/     Shared Claude Code commands (/setup)
+├── AGENTS.md    Project context and rules for coding agents (Codex reads it)
+├── CLAUDE.md    Imports AGENTS.md for Claude Code
 └── requirements.txt
 ```
 
 ## Setup (once per laptop)
 
 You need Git, Python 3.11+, and an editor (VS Code recommended).
+
+### Quick way: one setup script
+
+Clone the repo (step 1 below), then either:
+
+- **Claude Code:** open it in the `firecal` folder and type `/setup`.
+- **Codex:** open it in the `firecal` folder and ask it to "set up my environment".
+- **Yourself, in a terminal:** `bash scripts/setup.sh` on macOS, or on Windows `powershell -ExecutionPolicy Bypass -File scripts\setup.ps1`.
+
+All three run the same script. It checks Git and Python, creates `.venv`, installs the packages, starts the app for a few seconds to prove it works, and tells you which Machine readiness cells to mark Done. Approve the commands your agent asks to run.
+
+### By hand
 
 1. Clone the repo:
 
