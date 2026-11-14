@@ -79,6 +79,8 @@ streamlit run src/app.py
 
 The app opens in your browser at http://localhost:8501. Stop it with `Ctrl+C` in the terminal.
 
+On first run (or after you add or change files in `data/`) the app rebuilds the harmonized monthly record from `data/*.csv` itself, which takes a few seconds; you don't need to run `python -m src.harmonize` first. With no data it shows the download command. The page follows the T-03 layout: season summary, monthly activity for Canada (placeholder until the US-04 calendar) and slots for the tasks still to come.
+
 Each time you open a new terminal, activate the environment again (`source .venv/bin/activate`) before running the app.
 
 Tested setup: Python 3.13.1, pandas 3.1.1, streamlit 1.67.0 (macOS). If the page says "If you can see this, your setup works.", you're ready.

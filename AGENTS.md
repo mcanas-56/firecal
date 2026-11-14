@@ -15,7 +15,7 @@ If `data/` has no CSVs after setup, offer to download the NASA FIRMS practice se
 
 ## Layout
 
-- `src/` app and data code; `src/app.py` is the Streamlit entry point, `src/load_data.py` loads and cleans FIRMS CSVs (US-01), `src/harmonize.py` builds the harmonized monthly record (US-02)
+- `src/` app and data code; `src/app.py` is the Streamlit entry point, `src/load_data.py` loads and cleans FIRMS CSVs (US-01), `src/harmonize.py` builds the harmonized monthly record (US-02), `src/app_data.py` loads or rebuilds it for the app (US-09), `src/season_summary.py` fire-season summary (US-05)
 - `docs/harmonization.md` method note for US-02: read before changing the harmonization
 - `data/` raw NASA FIRMS CSVs, local only (gitignored)
 - `notebooks/` exploration
