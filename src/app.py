@@ -15,6 +15,7 @@ import pandas as pd  # noqa: E402
 import streamlit as st  # noqa: E402
 
 from src.app_data import data_dir, load_or_build_monthly, signature  # noqa: E402
+from src.calendar_view import calendar_html, sample_monthly  # noqa: E402
 from src.season_summary import render_season_summary  # noqa: E402
 
 DEFAULT_AREA = 'Canada'
@@ -51,18 +52,26 @@ st.caption(f'Area: **{area}** (area selection comes with US-03) · data view: ha
 st.session_state.setdefault('season_area', area)
 render_season_summary(monthly)
 
-# 4. Calendar (US-04) -- placeholder: monthly harmonized activity for the default area
+# 4-5. Calendar and legend -----------------------------------------------------------
+# US-04a: the agreed layout drawn with SAMPLE values. US-04 swaps in the real record for
+# the selected area: calendar_html(monthly[monthly.area == area], ...).
 st.subheader(f'Monthly fire activity: {area}')
-d = monthly[monthly['area'] == area].copy()
-d['month_start'] = pd.to_datetime(dict(year=d['year'], month=d['month'], day=1))
-chart = d.set_index('month_start')[['harmonized']].rename(columns={'harmonized': 'Fire cell-days (harmonized)'})
-st.bar_chart(chart, height=280)
-factor = d['factor'].dropna()
-fit_note = (f'VIIRS ≈ {factor.iloc[0]:.2f} × MODIS for {area}. ' if len(factor) else '')
-st.caption('Placeholder until the month × year calendar heatmap (US-04). '
-           f'{fit_note}Method: docs/harmonization.md.')
+st.html(calendar_html(sample_monthly(area), flags={2023: 'high', 2020: 'low'},
+                      title='Monthly burning activity, harmonized fire cell-days (sample values)'))
+st.caption('Sample values to agree the layout (US-04a); the real calendar comes with US-04. '
+           'Hover a cell for its value. Colours step on a log scale (T-03 palette); '
+           'unusual-year outlines are placeholders for US-06.')
 
-# 5. Legend (US-04 / T-03) and 6. Hotspot map (US-10) ------------------------------
+d = monthly[monthly['area'] == area].copy()
+with st.expander(f'Real monthly data for {area} (preview until US-04)'):
+    d['month_start'] = pd.to_datetime(dict(year=d['year'], month=d['month'], day=1))
+    chart = d.set_index('month_start')[['harmonized']].rename(columns={'harmonized': 'Fire cell-days (harmonized)'})
+    st.bar_chart(chart, height=260)
+    factor = d['factor'].dropna()
+    fit_note = (f'VIIRS ≈ {factor.iloc[0]:.2f} × MODIS for {area}. ' if len(factor) else '')
+    st.caption(f'{fit_note}Method: docs/harmonization.md.')
+
+# 6. Hotspot map (US-10) ---------------------------------------------------------------
 st.subheader('Hotspot map')
 st.info('Coming with US-10.')
 
