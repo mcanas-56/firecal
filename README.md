@@ -100,3 +100,47 @@ Tested setup: Python 3.13.1, pandas 3.1.1, streamlit 1.67.0 (macOS). If the page
 - Hand the task spec to Claude Code on your branch, then review and test the output against the acceptance criteria.
 - Push your branch and open a pull request. One other teammate reviews it before it merges to `main`.
 - **Definition of Done:** acceptance criteria pass on Canada and Argentina, tested on a second laptop, reviewed and merged, README updated.
+
+## Load and clean hotspots (US-01)
+
+From the repo root, with `.venv` activated:
+
+```bash
+python -m src.load_data data/modis_2022_Canada.csv data/viirs-snpp_2022_Canada.csv
+python -m unittest discover -s tests -v
+```
+
+In Python:
+
+```python
+from pathlib import Path
+from src.load_data import load_hotspots
+
+clean = load_hotspots(sorted(Path('data').glob('*.csv')))
+reports = clean.attrs['cleaning_reports']
+```
+
+The loader returns one dataframe with normalized lowercase column names, numeric
+coordinates, parsed `acq_date`, normalized `instrument` and original sensor-scale
+`confidence` values stored as strings. Other input columns are retained (sensor-only
+columns are null for the other sensor). `source_file` records provenance; `area`
+comes from the downloader's `<sensor>_<year>_<country>.csv` naming convention,
+otherwise it is missing. Pass explicit paths; the loader does not download data.
+
+Cleaning rejects unsupported instruments, missing/non-numeric/out-of-range
+coordinates, invalid or missing dates, invalid confidence, low confidence, and
+non-vegetation or missing/invalid `type`, in that order. Only `type=0` (presumed
+vegetation fire) is kept, excluding industrial sources, volcanoes and offshore
+anomalies. Each rejected row receives its first matching reason so per-file drop
+counts add up exactly. Reports print by default; use `verbose=False` to suppress.
+Missing required columns raise a descriptive error, rather than silently losing a
+whole file. Required: latitude, longitude, acq_date, instrument, confidence, type.
+
+The default MODIS cutoff is **30** (inclusive, valid range 0–100); this is an
+explicit project filtering choice, configurable with `min_modis_confidence` or
+`--min-modis-confidence`. VIIRS keeps `n` and `h`, following the confidence-filtering
+example in [NASA's FIRMS tutorial](https://firms.modaps.eosdis.nasa.gov/content/academy/data_ingest/firms_data_ingest.html).
+No conversion between the sensors' confidence scales is claimed. Acquisition time
+is preserved as text; this task validates acquisition dates only. No deduplication,
+monthly aggregation, confidence calibration or inference about burned area occurs;
+harmonization belongs to US-02.
