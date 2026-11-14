@@ -8,7 +8,7 @@ A fire-season calendar built from NASA FIRMS MODIS and VIIRS hotspot data — Te
 firecal/
 ├── data/        Raw NASA FIRMS CSVs (gitignored — download locally, never commit)
 ├── web/         The FireCal page (HTML, CSS, js/ by feature, bundled D3 and land map, data/archive.json)
-├── src/         Data pipeline (load, harmonize, features, season, page data) and the local server (src/serve.py)
+├── src/         Data pipeline (load, harmonize, features, outlook models, season, page data) and the local server (src/serve.py)
 ├── design/      The firecal-demo prototype and its screenshots: the design source of truth (T-05)
 ├── docs/        Design notes (calendar wireframe and palette: docs/t-03-calendar-design.md)
 ├── notebooks/   Exploration notebooks
@@ -81,7 +81,7 @@ python -m src.serve        # Windows: py -3 -m src.serve
 
 That's the only command. It:
 
-1. prepares the data from `data/*.csv` with our pipeline: cleans the hotspots (US-01), harmonizes MODIS and VIIRS into one monthly record (US-02) and estimates the fire season (US-05). This takes about 20–30 seconds the first time for the full 2012–2023 set, and runs again only when the data files or the pipeline code change (for example after a `git pull`). The results go to `data/processed/` (local, gitignored).
+1. prepares the data from `data/*.csv` with our pipeline: cleans the hotspots (US-01), harmonizes MODIS and VIIRS into one monthly record (US-02), estimates the fire season (US-05) and fits the fire outlook (US-18). This takes about a minute the first time for the full 2012–2023 set, and runs again only when the data files or the pipeline code change (for example after a `git pull`). The results go to `data/processed/` (local, gitignored).
 2. serves the page at http://localhost:8000 (the next free port if 8000 is taken) and opens your browser. Stop it with `Ctrl+C`.
 
 Options: `--port 8080`, `--no-browser`, `--skip-build` (serve the last build). `python -m src.web_data` rebuilds the data without starting the server. With no data yet, the page shows the download command.
@@ -223,6 +223,23 @@ Each row holds what happened that month (`cell_days`, `burned`, `detections`, `f
 
 Rows only exist for cells that burned at some point, so evaluate on cells first seen in the training years (`first_seen_year <= 2019`). 25% of Canada's cells and 8% of Argentina's were first seen in 2020–2023, mostly in Canada's 2023 season. `--train-end` changes the year the summary reports against.
 
+## Fire outlook models (US-16)
+
+Fits and scores the outlook the app can show (US-18):
+
+```
+python -m src.predict
+```
+
+It needs `data/processed/cell_month.parquet` (`python -m src.features`) and `harmonized_monthly.csv` (`python -m src.harmonize`). It fits on 2012–2019, picks settings on 2020–2021, refits on 2012–2021 and scores once on 2022–2023 against a climatology baseline. Three outlooks:
+- next month's burn probability per 0.1° cell (logistic regression);
+- next month's fire cell-days per area (a nowcast that scales the monthly normal by last month's anomaly);
+- the peak month.
+
+All three beat the baseline in both areas. For example, the cell map's AUC rises from 0.72 to 0.85 in Canada and from 0.82 to 0.87 in Argentina. Results go to `data/processed/prediction/` (`metrics.json` with a `ship` flag per model, test predictions, monthly climatology). It takes about 20 seconds.
+
+Method, results and limits (new fire areas are not scored; one month ahead; no weather): [docs/prediction.md](docs/prediction.md).
+
 ## Fire-season summary (US-05)
 
 The page's **Fire season** cards show the start, peak and end month for the selected area. `python -m src.serve` (or `python -m src.web_data`) computes them from `data/processed/harmonized_monthly.csv` and writes them to `data/processed/web/monthly.json`.
@@ -256,3 +273,13 @@ The **Month by year** grid on the page shows the harmonized record from US-02: o
 ## Area selection (US-03)
 
 The area switch at the top of the page (Canada | Argentina) drives every section: daily calendar, season, month × year calendar, globe and stat cards. Canada is the default. The choice is kept in the page address, so `http://localhost:8000/?area=Argentina` opens straight on Argentina; an unknown area falls back to Canada. Areas come from the data, so downloading another country with `get_data.py --countries` adds it to the switch.
+
+## Outlook mode (US-18)
+
+The globe's third tab, **Outlook**, shows the US-16 fire outlook, labelled *Outlook from 2012–2023 patterns, not a forecast*. Pick a month in the sidebar:
+- **Next-month outlook** (January 2024, the month after the record ends): every 0.1° cell with at least a 5% chance of a fire cell-day, coloured 5–20%, 20–50% and 50%+. The cards show how many cells reach 30%, the expected harmonized fire cell-days for the area (with the normal and the past low–high range), and the typical peak month.
+- **Back-test** (any month of 2022–2023): what the tested model expected, with the fires that actually happened drawn as rings. The cards show the share of fires that landed on mapped cells (fires in places with no fire since 2012 count as misses) and the monthly estimate against the actual value. Months when VIIRS was offline are shown, flagged and left out of the scores.
+
+The sidebar note gives each model's test score against its climatology baseline. If a model had not beaten its baseline, the map would show the baseline instead.
+
+The page builds `outlook.json` with the rest of its data (`src/outlook.py`, run in its own process, about 30 extra seconds). It needs the full 2012–2023 download; with fewer years, the Outlook tab says which years are missing.

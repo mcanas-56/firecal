@@ -158,8 +158,14 @@ def area_features(cells: pd.DataFrame, periods: pd.PeriodIndex, gap_days: pd.Ser
     return out
 
 
-def build_features(cells: pd.DataFrame, coverage: pd.DataFrame, grid: float = 0.1) -> pd.DataFrame:
-    """The cell-month table (COLUMNS) for every area with VIIRS data."""
+def build_features(cells: pd.DataFrame, coverage: pd.DataFrame, grid: float = 0.1,
+                   extend_months: int = 0) -> pd.DataFrame:
+    """The cell-month table (COLUMNS) for every area with VIIRS data.
+
+    extend_months adds that many months after the data ends. Their predictors are real
+    (they only use earlier months); their outcome columns are 0 because nothing is known
+    yet. The outlook (src/outlook.py) uses this to forecast the month after the record.
+    """
     gaps = sensor_gaps(cells, coverage)
     gap_dates = pd.to_datetime(gaps.loc[gaps['sensor'] == 'viirs', 'date'])
     gap_days = pd.PeriodIndex(gap_dates, freq='M').value_counts()
@@ -169,7 +175,7 @@ def build_features(cells: pd.DataFrame, coverage: pd.DataFrame, grid: float = 0.
         cov = coverage[(coverage['area'] == area) & (coverage['sensor'] == 'viirs')]['period']
         if not len(cov):
             continue
-        periods = pd.period_range(cov.min(), cov.max(), freq='M')
+        periods = pd.period_range(cov.min(), cov.max() + extend_months, freq='M')
         part = area_features(grp, periods, gap_days, grid)
         part.insert(0, 'area', area)
         parts.append(part)

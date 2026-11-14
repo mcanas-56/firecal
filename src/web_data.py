@@ -10,6 +10,8 @@ the season (US-05), then writes to data/processed/ (local, gitignored):
                           date -> area -> {total, frp, points: [[lat, lon, frp]]}
 - web/monthly.json        per area: harmonized monthly record, MODIS->VIIRS fit,
                           season summary, and which sensor the daily view uses
+- web/outlook.json        the globe's Outlook mode (US-18, src/outlook.py): next
+                          month's outlook, 2022-2023 back-tests and model skill
 
 Daily view: cleaned VIIRS Suomi-NPP detections where a VIIRS S-NPP file covers that
 area and year (finer pixels, same satellite the harmonization is calibrated to),
@@ -37,11 +39,13 @@ import pandas as pd
 from src.app_data import csv_inputs, data_dir, is_stale, monthly_path
 from src.harmonize import FILE_PATTERN, harmonize
 from src.load_data import load_hotspots
+from src.outlook import run_outlook
 from src.season_summary import summarize_season
 
 # Code that shapes the page data. Editing any of these (after a git pull, say) makes the
 # next `python -m src.serve` rebuild, so every laptop shows what the current code computes.
-PIPELINE_FILES = ('load_data.py', 'harmonize.py', 'season_summary.py', 'web_data.py', 'app_data.py')
+PIPELINE_FILES = ('load_data.py', 'harmonize.py', 'season_summary.py', 'web_data.py', 'app_data.py',
+                  'features.py', 'predict.py', 'outlook.py')   # the outlook's code (US-18) too
 POINTS_PER_DAY = 60          # sampled globe markers per area and day (counts use every detection)
 SENSOR_LABEL = {'viirs': 'VIIRS S-NPP', 'modis': 'MODIS'}
 
@@ -61,7 +65,8 @@ def web_dir(folder: Path) -> Path:
 
 
 def outputs(folder: Path) -> list[Path]:
-    return [web_dir(folder) / 'archive.json', web_dir(folder) / 'monthly.json', monthly_path(folder)]
+    return [web_dir(folder) / 'archive.json', web_dir(folder) / 'monthly.json', monthly_path(folder),
+            web_dir(folder) / 'outlook.json']
 
 
 def _file_info(path: Path) -> dict | None:
@@ -178,6 +183,10 @@ def build(folder: Path | None = None, *, verbose: bool = True) -> dict:
     if not files:
         raise FileNotFoundError(f'No FIRMS CSVs in {folder}')
     t0 = time.time()
+    out = web_dir(folder)
+    # The outlook first, in its own process: it works from the small cell cache and
+    # hands its memory back before the full detection table is loaded below.
+    outlook = run_outlook(files, out / 'outlook.json', folder / 'processed' / 'cells', verbose=verbose)
     df = load_hotspots(files, verbose=False)
     table, fits = harmonize(df)
     chosen = daily_files(files)
@@ -187,17 +196,17 @@ def build(folder: Path | None = None, *, verbose: bool = True) -> dict:
 
     monthly_path(folder).parent.mkdir(parents=True, exist_ok=True)
     table.to_csv(monthly_path(folder), index=False)
-    out = web_dir(folder)
     out.mkdir(parents=True, exist_ok=True)
     (out / 'archive.json').write_text(json.dumps(archive, separators=(',', ':')), encoding='utf-8')
     (out / 'monthly.json').write_text(json.dumps(summary, separators=(',', ':')), encoding='utf-8')
     report = {'files': len(files), 'detections': int(len(df)), 'days': len(archive),
-              'gap_days': sum(len(v) for v in gaps.values()),
-              'areas': sorted(summary['areas']), 'seconds': round(time.time() - t0, 1)}
+              'gap_days': sum(len(v) for v in gaps.values()), 'areas': sorted(summary['areas'])}
+    report['outlook'] = outlook.get('status')
+    report['seconds'] = round(time.time() - t0, 1)
     if verbose:
         print(f"Built FireCal data from {report['files']} files: {report['detections']:,} detections, "
-              f"{report['days']} days, {', '.join(report['areas'])}, {report['gap_days']} satellite-gap days "
-              f"({report['seconds']}s)")
+              f"{report['days']} days, {', '.join(report['areas'])}, {report['gap_days']} satellite-gap days, "
+              f"outlook {report['outlook']} ({report['seconds']}s)")
     return report
 
 
@@ -233,7 +242,7 @@ def ensure(folder: Path | None = None, *, verbose: bool = True) -> str:
     reason = why_rebuild(folder, files)
     if reason:
         if verbose:
-            print(f'Preparing FireCal data from data/*.csv ({reason}; about 20-30 seconds for 2012-2023)...', flush=True)
+            print(f'Preparing FireCal data from data/*.csv ({reason}; about a minute for 2012-2023)...', flush=True)
         build(folder, verbose=verbose)
         return 'built'
     return 'cached'

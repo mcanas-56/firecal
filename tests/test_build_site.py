@@ -18,7 +18,7 @@ class BuildSiteTests(unittest.TestCase):
             write_year(data, 'Canada', 2022, peak=7, lat=55.0, lon=-110.0)
             report = build_site(out, data, verbose=False)
             for rel in ('index.html', 'styles.css', 'js/main.js', 'vendor/d3.min.js',
-                        'data/land.geojson', 'data/archive.json', 'data/monthly.json', '.nojekyll'):
+                        'data/land.geojson', 'data/archive.json', 'data/monthly.json', 'data/outlook.json', '.nojekyll'):
                 self.assertTrue((out / rel).is_file(), rel)
             self.assertFalse((out / 'data' / 'no-data').exists())
             monthly = json.loads((out / 'data' / 'monthly.json').read_text())

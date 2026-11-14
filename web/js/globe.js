@@ -1,6 +1,8 @@
 // Interactive globe: D3 orthographic projection on a canvas with Natural Earth land.
 // Drag to rotate, wheel or +/− to zoom, reset button; hotspots coloured by radiative
-// power (FRP) with a hover tooltip. Ported from the prototype.
+// power (FRP) with a hover tooltip. Ported from the prototype. In Outlook mode
+// (US-18) points are outlook cells coloured by their chance of fire, with the fires that
+// actually happened drawn as rings on top (back-tests).
 /* global d3 */
 import { $, state } from './state.js';
 
@@ -9,7 +11,9 @@ const AREA_VIEW = { Canada: { lon: -100, lat: 38 }, Argentina: { lon: -63, lat: 
 
 let canvas, ctx;
 let landGeo = null;
-let points = [];                 // [lat, lon, frp, date]
+let points = [];                 // [lat, lon, frp, date] or, for outlooks, [lat, lon, chance, month]
+let pointKind = 'frp';           // 'frp' | 'probability'
+let overlay = [];                // [lat, lon] rings: fires that happened (back-tests)
 let rotation = { ...AREA_VIEW.Canada };
 let zoom = 1;
 let dragging = false;
@@ -17,7 +21,15 @@ let lastPointer = null;
 
 export function frpColour(frp) { return frp > 80 ? '#ff704c' : frp > 20 ? '#ffa45e' : '#f7d68c'; }
 
-export function setPoints(pts) { points = pts; draw(); }
+export function chanceColour(p) { return p >= 0.5 ? '#ff704c' : p >= 0.2 ? '#ffa45e' : '#f7d68c'; }
+
+// Every call replaces the points and the ring overlay; past and live views pass no options.
+export function setPoints(pts, { kind = 'frp', rings = [] } = {}) {
+  points = pts;
+  pointKind = kind;
+  overlay = rings;
+  draw();
+}
 
 // Known areas have a hand-picked view; any other area centres on its own hotspots.
 function areaView(area) {
@@ -114,21 +126,32 @@ export function draw() {
   for (let lat = -60; lat <= 60; lat += 30) line(Array.from({ length: 181 }, (_, i) => [-180 + i * 2, lat]), grid);
   for (let lon = -180; lon < 180; lon += 30) line(Array.from({ length: 91 }, (_, i) => [lon, -90 + i * 2]), grid);
 
+  const chance = pointKind === 'probability';
   for (const p of points) {
     const v = project(p[1], p[0]);
     if (v.z <= 0.02) continue;
-    const colour = frpColour(p[2]);
+    const colour = chance ? chanceColour(p[2]) : frpColour(p[2]);
+    const size = chance ? p[2] * 260 : p[2];   // same marker sizes: 50% chance ~ 130 MW
     ctx.beginPath();
-    ctx.arc(v.x, v.y, 3.2 + Math.min(p[2] / 130, 2), 0, Math.PI * 2);
+    ctx.arc(v.x, v.y, 3.2 + Math.min(size / 130, 2), 0, Math.PI * 2);
     ctx.fillStyle = colour + '30';
     ctx.shadowBlur = 7;
     ctx.shadowColor = colour;
     ctx.fill();
     ctx.beginPath();
-    ctx.arc(v.x, v.y, 1.7 + Math.min(p[2] / 180, 1), 0, Math.PI * 2);
+    ctx.arc(v.x, v.y, 1.7 + Math.min(size / 180, 1), 0, Math.PI * 2);
     ctx.fillStyle = colour;
     ctx.fill();
     ctx.shadowBlur = 0;
+  }
+  ctx.strokeStyle = dark ? '#8fdcff8c' : '#1f6f9a8c';   // see-through, so the chances underneath stay visible
+  ctx.lineWidth = 0.75;
+  for (const p of overlay) {
+    const v = project(p[1], p[0]);
+    if (v.z <= 0.02) continue;
+    ctx.beginPath();
+    ctx.arc(v.x, v.y, 2.4, 0, Math.PI * 2);
+    ctx.stroke();
   }
 
   const shade = ctx.createRadialGradient(cx - r * 0.4, cy - r * 0.4, r * 0.1, cx, cy, r * 1.08);
@@ -157,7 +180,9 @@ function hover(e) {
   }
   const tip = $('globe-tooltip');
   if (closest) {
-    tip.textContent = `${closest[3] || state.date} · ${closest[0].toFixed(3)}°, ${closest[1].toFixed(3)}° · ${closest[2].toFixed(1)} MW`;
+    tip.textContent = pointKind === 'probability'
+      ? `${closest[3]} · ${closest[0].toFixed(2)}°, ${closest[1].toFixed(2)}° · ${Math.round(closest[2] * 100)}% chance of fire`
+      : `${closest[3] || state.date} · ${closest[0].toFixed(3)}°, ${closest[1].toFixed(3)}° · ${closest[2].toFixed(1)} MW`;
     tip.hidden = false;
   } else tip.hidden = true;
 }

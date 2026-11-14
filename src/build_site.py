@@ -4,8 +4,8 @@
     python -m src.build_site --out public
 
 Prepares the page data from data/*.csv with the same pipeline as `python -m src.serve`
-(src/web_data.py: cleaning, harmonization, season), then copies web/ and the two data
-files into one folder that any static host can serve. The GitHub Actions workflow in
+(src/web_data.py: cleaning, harmonization, season, outlook), then copies web/ and the
+generated data files (archive, monthly, outlook) into one folder that any static host can serve. The GitHub Actions workflow in
 .github/workflows/pages.yml runs this and publishes the folder.
 
 Preview the result locally:  python -m http.server --directory _site 8000

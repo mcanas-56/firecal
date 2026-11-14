@@ -86,6 +86,11 @@ class BuildTests(unittest.TestCase):
         self.assertEqual(canada['season']['peak'], 7)
         self.assertEqual(self.monthly['areas']['Argentina']['season']['peak'], 9)
 
+    def test_outlook_is_written_and_says_why_it_is_unavailable(self):
+        outlook = json.loads((self.data / 'processed' / 'web' / 'outlook.json').read_text())
+        self.assertEqual(outlook['status'], 'unavailable')   # only 2011-2022 here, not 2012-2023
+        self.assertIn('2012-2023', outlook['reason'])
+
     def test_json_has_no_nan(self):
         text = (web_data.web_dir(self.data) / 'monthly.json').read_text()
         self.assertNotIn('NaN', text)
