@@ -166,3 +166,40 @@ table, fits = harmonize(load_hotspots(sorted(Path('data').glob('*.csv')), verbos
 ```
 
 Method, results and limits: [docs/harmonization.md](docs/harmonization.md).
+
+## Fire-season summary (US-05)
+
+Build the monthly record and start the app from the repository root:
+
+```bash
+python -m src.harmonize "data/*.csv"
+streamlit run src/app.py
+```
+
+Choose Canada or Argentina to update the **Start**, **Peak**, and **End** metrics.
+The app reads `data/processed/harmonized_monthly.csv`; if missing, it displays the
+build command. Rebuild that file after changing raw inputs. Processed data stays
+local and gitignored. The reusable UI function is `render_season_summary(monthly)`
+in `src/season_summary.py`, ready for integration into the US-09 app shell.
+
+In Python, call `summarize_season(monthly, area, threshold_fraction=0.2)` with the
+US-02 table (`area`, `year`, `month`, `harmonized`). It returns a `SeasonSummary`
+containing the status, included years, numbered start/peak/end months, and ordered
+season months. This summarizes the available years, not an individual year.
+
+Method: use only complete years with 12 non-missing monthly values, average each
+calendar month's harmonized activity across those years, and select the largest
+mean as the peak (ties choose the earliest calendar month). Starting at that peak,
+walk both ways through consecutive months reaching **20% of the peak mean**,
+including equality and wrapping December–January. This threshold is an explicit
+project heuristic, configurable in the calculation API, not an official season
+boundary. Disconnected secondary seasons are excluded. If all months qualify,
+report January–December and label the activity year-round. All-zero data has no
+estimated season. Missing months are never interpreted as zeros; without a
+complete year the UI reports insufficient coverage instead of invented dates.
+Negative/nonfinite values, duplicate month keys and invalid month/year fields
+raise descriptive errors. Only the selected area's records are evaluated.
+
+These are descriptive activity estimates, not forecasts or burned-area estimates.
+The practice data covers just 2022–2023, so results are not a long-term climate
+baseline. Teammate review and testing on a second laptop remain required.
