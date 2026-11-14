@@ -60,11 +60,63 @@ The charter's target (harmonized MODIS and VIIRS agree with r ≥ 0.8) is met in
 
 **What this means for the calendar.** Fire-season timing and peak size before 2012 are reliable. Off-season months before 2012 will look quieter than the same months after 2012. The calendar should not be read as showing a real increase in winter fire activity in 2012.
 
+## Results on 2012–2023 (US-14, 144 overlap months per area)
+
+Data: 48 FIRMS country files (MODIS and VIIRS Suomi-NPP, Canada and Argentina, 2012–2023), downloaded with `python3 scripts/get_data.py --years 2012-2023`. Detections kept by US-01's cleaning:
+
+| Year | Canada VIIRS | Canada MODIS | Argentina VIIRS | Argentina MODIS |
+|---|---|---|---|---|
+| 2012 | 170,046 | 34,739 | 169,182 | 58,289 |
+| 2013 | 311,138 | 56,234 | 210,337 | 63,106 |
+| 2014 | 460,528 | 62,407 | 108,470 | 34,538 |
+| 2015 | 301,445 | 64,872 | 136,392 | 42,498 |
+| 2016 | 101,567 | 23,525 | 162,934 | 52,693 |
+| 2017 | 426,242 | 81,141 | 180,476 | 57,317 |
+| 2018 | 302,827 | 56,795 | 165,584 | 49,992 |
+| 2019 | 170,859 | 35,686 | 143,367 | 45,668 |
+| 2020 | 37,262 | 11,033 | 400,953 | 113,716 |
+| 2021 | 430,732 | 83,292 | 170,504 | 51,590 |
+| 2022 | 151,415 | 29,337 | 271,393 | 71,024 |
+| 2023 | 1,641,678 | 280,489 | 147,160 | 44,095 |
+
+VIIRS Suomi-NPP data starts on 20 January 2012. Step 4 flags 1–19 January 2012 as VIIRS gap days, so January 2012 is VIIRS plus MODIS × factor for those days (Argentina 1,651 recorded → 5,067; Canada 148 → 271).
+
+**Fit (single factor, gap days left out):**
+
+| Area | Factor | R² | Pearson r | Median \|% diff\| | Activity-weighted \|% diff\| |
+|---|---|---|---|---|---|
+| Argentina | 2.83 | 0.96 | 0.99 | 16.8% | 13.7% |
+| Canada | 2.46 | 0.96 | 0.99 | 40.2% | 21.1% |
+
+The charter's target (r ≥ 0.8) is still met. Gap days found: 36 for VIIRS (all filled from MODIS), 30 for MODIS (left out of the fit). Because VIIRS covers every month from 2012, the harmonized value is VIIRS in 278 of 288 area-months and VIIRS plus a MODIS gap fill in the other 10. The factor now matters only for gap days and for any MODIS-only back record before 2012.
+
+**Is one factor per area stable?** Not very. Fitted on each year alone:
+
+| Area | 2012 | 2013 | 2014 | 2015 | 2016 | 2017 | 2018 | 2019 | 2020 | 2021 | 2022 | 2023 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Argentina | 2.89 | 2.83 | 3.15 | 3.15 | 2.70 | 2.76 | 2.82 | 2.95 | 2.70 | 2.92 | 2.96 | 2.94 |
+| Canada | 2.89 | 2.84 | 3.41 | 2.63 | 3.26 | 2.55 | 2.36 | 2.81 | 3.14 | 2.29 | 2.87 | 2.30 |
+
+Argentina stays within 2.70–3.15. Canada ranges from 2.29 to 3.41. Canada's all-years factor (2.46) sits below most single years because least squares is driven by the biggest months, and 2023 alone holds about a third of Canada's VIIRS detections. Quiet Canadian years (2016, 2020) have high ratios, the same pattern as quiet months.
+
+**Single factor vs power law** (VIIRS = a × MODIS^b, fitted in log space on months with both counts above 0; quiet = months below the area's median VIIRS):
+
+| Area | Method | Parameters | Median \|% diff\| | Quiet months | Busy months | Activity-weighted |
+|---|---|---|---|---|---|---|
+| Argentina | Single factor | 2.83 | 16.8% | 27.8% | 9.9% | 13.7% |
+| Argentina | Power law | a 10.37, b 0.84 | 7.6% | 11.6% | 6.0% | 7.5% |
+| Canada | Single factor | 2.46 | 40.2% | 56.4% | 24.0% | 21.1% |
+| Canada | Power law | a 22.81, b 0.71 | 12.0% | 16.7% | 8.9% | 15.0% |
+
+The power law is better on every measure in both areas, most of all in quiet months (Canada 56% → 17%). `python -m src.harmonize` prints both tables and writes them to `data/processed/harmonized_monthly_factors_by_year.csv` and `harmonized_monthly_methods.csv`.
+
+**Running it on a laptop.** The command line reads one CSV at a time into daily cell-days (with detection and night-detection counts, and highest and summed FRP, which US-15 uses) and caches them as Parquet in `data/processed/cells/` (about 8 MB for 2012–2023). Peak memory for the full rebuild fell from 4.2 GB to 1.7 GB on the first run and 0.5 GB on later runs (2 seconds instead of 14), and the output is identical to loading everything at once.
+
 ## Limits
 
 - Gap detection needs the other sensor: before 2012 (MODIS only) an Aqua outage cannot be told apart from a quiet spell. One sensor having zero detections everywhere while the other has only a handful could occasionally be a real difference rather than an outage; filling it with MODIS × factor is still the better estimate.
 
-- The practice set covers only 2022–2023, so each factor comes from 24 months. Applying it back to 2001 assumes the MODIS–VIIRS relationship is stable over time. Download the full overlap with `python3 scripts/get_data.py --years 2012-2023` (and MODIS from 2001 for the back record) before trusting the long series.
+- Each factor now comes from 144 months (2012–2023), but the ratio varies from year to year (Canada 2.29–3.41). Applying one factor back to 2001 assumes a stability the overlap does not show; read any pre-2012 MODIS-only year with that range in mind.
 - One constant factor per area cannot capture the different ratio in quiet and busy months (above).
 - The 0.1° grid is a choice. Larger cells reduce the gap between sensors but blur location; this has not been tuned.
 - Results depend on US-01's cleaning thresholds (MODIS confidence ≥ 30, VIIRS nominal/high).
@@ -73,12 +125,12 @@ The charter's target (harmonized MODIS and VIIRS agree with r ≥ 0.8) is met in
 
 **Keep the single factor per area** (decided 2026-11-14 at US-02 review). It matches the fire season, which is what the calendar is for, and it is easy to explain to judges. The quiet-month underestimate above is a known, documented limit.
 
+**To revisit (US-14):** on 2012–2023 the power law beats the single factor everywhere (table above). For the current series this changes only the 36 VIIRS gap days, so the decision matters mainly if a MODIS-only back record before 2012 is added. The team decides; until then the published series keeps the single factor.
+
 ## Enhancement (not planned for the hackathon)
 
-**Power-law calibration for quiet months.** Fit VIIRS = a × MODIS^b per area, in log space on overlap months with both counts above 0, instead of one constant factor. With b < 1 the curve scales quiet months up more than busy ones, which should shrink the 50–85% quiet-month gap while keeping the fire-season fit. To do it:
+**Power-law calibration for quiet months.** Fit VIIRS = a × MODIS^b per area instead of one constant factor. Done in US-14: `compare_methods` in `src/harmonize.py` fits it and compares it with the single factor on the same overlap months (results above). Still open before it can drive the published series:
 
-- add the fit next to `fit_factors` in `src/harmonize.py` behind an option (for example `--method power`), keeping the single factor as the default;
-- compare both methods on the same overlap months (median and activity-weighted % difference, quiet vs busy months) and report them here;
+- add it as an option (for example `--method power`), keeping the single factor as the default until the team decides;
+- decide how to fill VIIRS gap days with it: the curve is fitted on monthly totals, so it cannot scale a few days of MODIS the way the factor does;
 - decide how to handle months where MODIS is 0 (the power law gives 0; VIIRS usually is not).
-
-Worth doing once the full 2012–2023 overlap is downloaded, so the curve is fitted on more than 24 months.

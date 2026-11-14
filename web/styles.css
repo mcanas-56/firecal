@@ -229,3 +229,14 @@ footer{display:flex;justify-content:space-between;border-top:1px solid var(--lin
 @media(prefers-reduced-motion:reduce){.ticker-track{animation:none}}
 @media(max-width:620px){.ticker-label{padding:0 14px;font-size:9px}.ticker-label .tag{display:none}}
 #home-page>.cards{margin-bottom:30px}
+/* Live view announcement: a slim banner at the top of the globe, so the globe stays visible */
+.live-announce{position:absolute;top:19px;left:50%;transform:translateX(-50%);z-index:460;display:flex;align-items:center;gap:12px;max-width:min(560px,calc(100% - 330px));padding:10px 14px;background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--orange);border-radius:8px;box-shadow:var(--shadow)}
+.live-announce strong{display:block;font:500 14px 'Space Grotesk',system-ui,-apple-system,'Segoe UI',sans-serif}
+.live-announce span:not(.dot){display:block;font-size:11px;color:var(--muted);line-height:1.5}
+.live-announce .linkbtn{white-space:nowrap;font-weight:600}
+.live-dot{flex-shrink:0;background:var(--orange);animation:live-pulse 1.6s ease-in-out infinite}
+@keyframes live-pulse{50%{opacity:.35}}
+@media(prefers-reduced-motion:reduce){.live-dot{animation:none}}
+@media(max-width:900px){.live-announce{max-width:calc(100% - 120px)}}
+@media(max-width:620px){.live-announce{top:auto;bottom:250px;left:12px;right:12px;transform:none;max-width:none;padding:8px 12px;gap:10px}.live-announce>div{flex:1;min-width:0}.live-announce span:not(.dot){display:none}.live-announce strong{font-size:13px}}
+#live-mode{display:inline-flex;align-items:center;justify-content:center;gap:2px}

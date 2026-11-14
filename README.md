@@ -8,7 +8,7 @@ A fire-season calendar built from NASA FIRMS MODIS and VIIRS hotspot data — Te
 firecal/
 ├── data/        Raw NASA FIRMS CSVs (gitignored — download locally, never commit)
 ├── web/         The FireCal page (HTML, CSS, js/ by feature, bundled D3 and land map, data/archive.json)
-├── src/         Data pipeline (load, harmonize, season, page data) and the local server (src/serve.py)
+├── src/         Data pipeline (load, harmonize, features, season, page data) and the local server (src/serve.py)
 ├── design/      The firecal-demo prototype and its screenshots: the design source of truth (T-05)
 ├── docs/        Design notes (calendar wireframe and palette: docs/t-03-calendar-design.md)
 ├── notebooks/   Exploration notebooks
@@ -57,17 +57,17 @@ All three run the same script. It checks Git and Python, creates `.venv`, instal
    pip install -r requirements.txt
    ```
 
-4. Download the practice data (see below).
+4. Setup also downloads the data (see below); add `--skip-data` to skip it.
 
-## Practice data
+## Data
 
-The app reads NASA FIRMS hotspot CSVs from `data/`. Download the practice set (MODIS + VIIRS Suomi-NPP, 2022–2023, Canada + Argentina: 8 files, about 230 MB) straight from NASA with:
+The app reads NASA FIRMS hotspot CSVs from `data/`. Download the record (MODIS + VIIRS Suomi-NPP, 2012–2023, Canada + Argentina: 48 files, about 740 MB, a few minutes) straight from NASA with:
 
 ```bash
 python3 scripts/get_data.py          # Windows: py -3 scripts\get_data.py
 ```
 
-`/setup` (or Codex setup) offers to run this for you. Running it again only downloads what's missing. Change the set with flags, for example `--years 2012-2023`, `--countries Canada`, `--sensors modis,viirs-snpp,viirs-jpss1`; `--list` shows the files without downloading.
+Setup runs this for you (unless `--skip-data`). Running it again only downloads what's missing, so if you already have the old 2022–2023 practice set, just run it again to add 2012–2021; the setup check warns while any of the 48 files are missing. Change the set with flags, for example `--years 2022-2023` for a quick small set, `--countries Canada`, `--sensors modis,viirs-snpp,viirs-jpss1`; `--list` shows the files without downloading.
 
 The files are public ([FIRMS country yearly data](https://firms.modaps.eosdis.nasa.gov/country/), no login) and stay on your laptop: `data/` is gitignored, and GitHub rejects files over 100 MB anyway. At the event, NASA's official datasets also go in `data/`.
 
@@ -90,6 +90,7 @@ Options: `--port 8080`, `--no-browser`, `--skip-build` (serve the last build). `
 
 - **Fire activity ticker:** the scrolling bar under the header. For the selected date or period it shows, per area, the activity level (calendar colours) and detections, the fire-season status, and the harmonized month vs the same month in another year. Real data only; hover or ⏸ pauses it.
 - **Area switch** (US-03): Canada | Argentina, plus any other country you download. It drives every section and is kept in the address (`?area=Argentina`).
+- **Live view / Past data:** the switch above the globe. Past data (default) explores the archive. Live view is in the MVP as "coming soon": it will show near-real-time NASA FIRMS hotspots from the last 24 hours once a live feed is connected, and shows no invented data until then.
 - **Globe:** where the hotspots were, coloured by radiative power. Drag, zoom, reset; at most 300 markers.
 - **Time explorer:** Days / Weeks / Months, with a play button.
 - **Stat cards:** detections, observation window, harmonized activity for the month.
@@ -101,7 +102,7 @@ Options: `--port 8080`, `--no-browser`, `--skip-build` (serve the last build). `
 
 The design comes from the firecal-demo prototype in `design/` (T-05). Everything runs offline except the two web fonts, which fall back to system fonts.
 
-Tested setup: Python 3.13.1, pandas 3.1.1 (macOS).
+Tested setup: Python 3.13.1, pandas 3.1.1, pyarrow 26.0.1 (macOS).
 
 ### Troubleshooting
 
@@ -168,13 +169,13 @@ harmonization belongs to US-02.
 
 ## Harmonize into one monthly record (US-02)
 
-From the repo root, with `.venv` activated and the practice data in `data/`:
+From the repo root, with `.venv` activated and the data in `data/`:
 
 ```bash
 python -m src.harmonize data/*.csv
 ```
 
-This runs the US-01 loader, then turns MODIS Aqua and VIIRS Suomi-NPP detections into fire cell-days (each 0.1° grid cell counted once per day per sensor), sums them by month, finds days one satellite was not recording (e.g. Suomi NPP offline 27 Jul–10 Aug 2022), fits one VIIRS/MODIS factor per area on the overlap months without those days, fills VIIRS gap days with MODIS × factor, and writes `data/processed/harmonized_monthly.csv` (one row per area-month, local only). It prints the factor, R², Pearson r and median % difference per area, and the gap days it found. Options: `--grid 0.25`, `--include-terra`, `--out path.csv`, `--quiet`.
+This runs the US-01 loader, then turns MODIS Aqua and VIIRS Suomi-NPP detections into fire cell-days (each 0.1° grid cell counted once per day per sensor), sums them by month, finds days one satellite was not recording (e.g. Suomi NPP offline 27 Jul–10 Aug 2022), fits one VIIRS/MODIS factor per area on the overlap months without those days, fills VIIRS gap days with MODIS × factor, and writes `data/processed/harmonized_monthly.csv` (one row per area-month, local only). It prints the factor, R², Pearson r and median % difference per area, and the gap days it found. It also prints the factor fitted on each year alone and a single-factor vs power-law comparison, and writes them beside the output (`harmonized_monthly_factors_by_year.csv`, `harmonized_monthly_methods.csv`). Each CSV is read once into daily cell-days cached as Parquet in `data/processed/cells/`, so rebuilding 2012–2023 needs about 1.7 GB of memory the first time and 0.5 GB after (`--no-cache` loads everything at once instead). Options: `--grid 0.25`, `--include-terra`, `--out path.csv`, `--quiet`, `--cache-dir path`, `--no-cache`.
 
 In Python:
 
@@ -187,6 +188,20 @@ table, fits = harmonize(load_hotspots(sorted(Path('data').glob('*.csv')), verbos
 ```
 
 Method, results and limits: [docs/harmonization.md](docs/harmonization.md).
+
+## Cell-month feature table (US-15)
+
+The inputs for the fire outlook (US-16) and the fire-deficit test (US-17). Build it with:
+
+```
+python -m src.features
+```
+
+This reads the VIIRS Suomi-NPP cell-days from the US-14 cache (building it first if needed) and writes `data/processed/cell_month.parquet` (local only): one row per area, 0.1° cell and month, for every cell that had a detection in the record. On 2012–2023 that is 8.3 million rows (19,097 Argentina cells and 38,432 Canada cells × 144 months), about 23 MB, built in 5 seconds from a warm cache.
+
+Each row holds what happened that month (`cell_days`, `burned`, `detections`, `frp_max`, `frp_mean`, `night_share`) and predictors that use **only earlier months**, so a model can't see the future: last month's and last year's cell-days, the share of earlier years the cell burned in this calendar month, months since it last burned, and the same activity in the 8 surrounding cells. `viirs_gap_days` flags months when VIIRS was offline, and `first_seen_year` says when the cell first burned. The full column list is at the top of `src/features.py`.
+
+Rows only exist for cells that burned at some point, so evaluate on cells first seen in the training years (`first_seen_year <= 2019`). 25% of Canada's cells and 8% of Argentina's were first seen in 2020–2023, mostly in Canada's 2023 season. `--train-end` changes the year the summary reports against.
 
 ## Fire-season summary (US-05)
 
@@ -211,7 +226,7 @@ Negative/nonfinite values, duplicate month keys and invalid month/year fields
 raise descriptive errors. Only the selected area's records are evaluated.
 
 These are descriptive activity estimates, not forecasts or burned-area estimates.
-The practice data covers just 2022–2023, so results are not a long-term climate
+The default data covers 2012–2023 (12 years), which is still short for a long-term climate
 baseline. Teammate review and testing on a second laptop remain required.
 
 ## Month × year calendar (US-04)

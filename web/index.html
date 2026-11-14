@@ -35,7 +35,7 @@
 <section id="no-data" class="no-data" hidden>
   <p class="eyebrow">One step left</p>
   <h2>No fire data on this laptop yet.</h2>
-  <p>Download the NASA FIRMS practice set (about 230 MB), then restart FireCal:</p>
+  <p>Download the NASA FIRMS data, 2012–2023 (about 740 MB), then restart FireCal:</p>
   <pre><code>python3 scripts/get_data.py      # Windows: py -3 scripts\get_data.py
 python -m src.serve</code></pre>
 </section>
@@ -48,8 +48,16 @@ python -m src.serve</code></pre>
   <div class="workspace">
     <aside class="filters">
       <p class="section-label">Explore the globe</p>
+      <div class="segmented" role="group" aria-label="Globe mode">
+        <button type="button" id="live-mode" data-mode="live" aria-pressed="false">● Live view</button>
+        <button type="button" id="past-mode" data-mode="past" class="selected" aria-pressed="true">Past data</button>
+      </div>
       <label for="region">Area of interest</label>
       <select id="region"><option>Canada</option><option>Argentina</option></select>
+      <div id="live-note" hidden>
+        <label>Observation window</label>
+        <div class="source-note"><strong>Last 24 hours · coming soon</strong><br>Live view will show near-real-time NASA FIRMS hotspots as they are detected. Until then, Past data shows the archive.</div>
+      </div>
       <div id="date-controls">
         <label for="map-date">Observation date</label>
         <input type="date" id="map-date">
@@ -72,6 +80,11 @@ python -m src.serve</code></pre>
       </div>
       <div class="map-badge"><span class="dot" style="background:var(--orange)"></span><span id="map-label">ARCHIVE</span></div>
       <div id="empty-map" class="map-empty" hidden></div>
+      <div id="live-panel" class="live-announce" role="status" hidden>
+        <span class="dot live-dot"></span>
+        <div><strong>Live view is coming soon</strong><span>Near-real-time NASA FIRMS hotspots from the last 24 hours will appear on this globe.</span></div>
+        <button type="button" class="linkbtn" id="live-back">See past data →</button>
+      </div>
       <div class="timeline">
         <div class="timeline-heading"><span class="section-label">Time Explorer</span><output id="slider-date" for="date-slider"></output></div>
         <div class="time-toolbar">
