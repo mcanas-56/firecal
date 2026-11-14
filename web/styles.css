@@ -213,3 +213,18 @@ footer{display:flex;justify-content:space-between;border-top:1px solid var(--lin
 .report-fieldset:disabled .primary{cursor:not-allowed;opacity:.75}
 @media(max-width:620px){.calendar-top{align-items:flex-start;flex-direction:column;gap:14px}.calendar-top-end{align-items:flex-start;width:100%}.area-switch{width:100%}.area-switch .scale-option{flex:1}.season-cards{grid-template-columns:1fr;gap:9px}.season-cards .card{display:flex;justify-content:space-between;align-items:center}.season-cards .card-value{margin:0;font-size:24px}.mg-row{grid-template-columns:30px repeat(12,minmax(16px,1fr));gap:2px}.mg-cell{height:32px;font-size:0;border-radius:4px}.mg-head span{font-size:7px}.mg-year{font-size:10px}}
 .no-data-mode #home-page{display:none!important}
+
+/* Fire-activity ticker: the prototype's bar, filled from real data (web/js/ticker.js) */
+.ticker{height:43px;background:var(--raised);border-bottom:1px solid var(--line);display:flex;overflow:hidden;align-items:center}
+.ticker-label{height:100%;display:flex;align-items:center;background:var(--raised);z-index:1;padding:0 25px 0 4vw;gap:8px;font-size:10px;letter-spacing:1.5px;font-weight:700;white-space:nowrap;border-right:1px solid var(--line)}
+.ticker-window{overflow:hidden;flex:1}
+.ticker-track{display:flex;width:max-content;animation:marquee 60s linear infinite}
+.ticker:hover .ticker-track,.ticker:focus-within .ticker-track,.ticker.paused .ticker-track{animation-play-state:paused}
+.ticker-item{display:flex;align-items:center;gap:14px;padding:0 30px;border-right:1px solid var(--line);white-space:nowrap;font-size:12px}
+.ticker-item span{color:var(--muted)}
+.ticker-item b{font-weight:500;display:inline-flex;align-items:center;gap:6px}
+.ticker-item small{font-size:9px;letter-spacing:.8px;color:var(--muted);text-transform:uppercase}
+.ticker-control{color:var(--muted);background:var(--raised);border:0;border-left:1px solid var(--line);height:100%;width:42px}
+@keyframes marquee{to{transform:translateX(-50%)}}
+@media(prefers-reduced-motion:reduce){.ticker-track{animation:none}}
+@media(max-width:620px){.ticker-label{padding:0 14px;font-size:9px}.ticker-label .tag{display:none}}

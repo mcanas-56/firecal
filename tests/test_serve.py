@@ -12,7 +12,7 @@ from src import web_data
 from src.serve import WEB, make_server
 from tests.test_web_data import write_year
 
-JS_FILES = ['main.js', 'state.js', 'calendar.js', 'globe.js', 'timeline.js', 'theme.js', 'nav.js', 'monthly.js']
+JS_FILES = ['main.js', 'state.js', 'calendar.js', 'globe.js', 'timeline.js', 'theme.js', 'nav.js', 'monthly.js', 'ticker.js']
 
 
 class ServeTests(unittest.TestCase):
@@ -103,7 +103,7 @@ class OfflineTests(unittest.TestCase):
     def test_prototype_and_demo_features_are_gone(self):
         html = (WEB / 'index.html').read_text(encoding='utf-8')
         js = ''.join(p.read_text(encoding='utf-8') for p in (WEB / 'js').glob('*.js'))
-        for marker in ('ticker', 'live-mode', 'show-reports', 'geolocation', 'Your demo reports'):
+        for marker in ('live-mode', 'show-reports', 'geolocation', 'Your demo reports', 'cityRisk', 'RISK OUTLOOK'):
             self.assertNotIn(marker.lower(), (html + js).lower(), marker)
         page_text = re.sub(r'<!--.*?-->|<script.*?</script>|<[^>]+>', ' ', html, flags=re.S).lower()
         for word in ('prototype', 'simulated', 'demo'):   # nothing on screen says it is a mock-up

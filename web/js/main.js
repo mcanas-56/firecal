@@ -7,6 +7,7 @@ import { initTimeline } from './timeline.js';
 import { initTheme } from './theme.js';
 import { initNav } from './nav.js';
 import { initMonthly } from './monthly.js';
+import { initTicker } from './ticker.js';
 
 const DEFAULT_AREA = 'Canada';
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -117,6 +118,7 @@ function init() {
   initGlobe();
   initCalendar();
   initMonthly();
+  initTicker();
   initTimeline();
   onRender(renderArea);
   onRender(renderSelection);

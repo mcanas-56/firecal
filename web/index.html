@@ -25,6 +25,11 @@
   </nav>
   <div class="header-end"><span class="header-note">NASA FIRMS · MODIS + VIIRS</span><button class="iconbtn" id="theme" aria-label="Switch to light mode" title="Toggle colour theme">☼</button></div>
 </header>
+<div class="ticker" role="region" aria-label="Fire activity for the selected date">
+  <div class="ticker-label"><span class="dot" style="background:var(--orange)"></span> FIRE ACTIVITY <span class="tag" id="ticker-date">NASA FIRMS</span></div>
+  <div class="ticker-window"><div class="ticker-track" id="ticker"></div></div>
+  <button class="ticker-control" id="pause" aria-label="Pause the activity ticker">Ⅱ</button>
+</div>
 
 <main>
 <section id="no-data" class="no-data" hidden>

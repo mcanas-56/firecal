@@ -2,14 +2,14 @@
 // non-zero daily counts for the selected area and year. Ported from the prototype.
 import { $, state, onRender, iso, shortDate, selectedPeriod, setYear, setDate, stopPlayback } from './state.js';
 
-const NAMES = ['No detections', 'Lower', 'Moderate', 'High', 'Very high'];
-const COLOURS = ['#34463d', '#91aa64', '#d9c46c', '#e69950', '#d9684c'];
+export const NAMES = ['No detections', 'Lower', 'Moderate', 'High', 'Very high'];
+export const COLOURS = ['#34463d', '#91aa64', '#d9c46c', '#e69950', '#d9684c'];
 
 // 25th / 50th / 75th percentile of the non-zero daily totals for this area and year.
-export function heatThresholds() {
+export function heatThresholds(area = state.area, year = state.year) {
   const v = Object.entries(state.archive)
-    .filter(([day]) => day.startsWith(String(state.year)))
-    .map(([, d]) => d[state.area]?.total)
+    .filter(([day]) => day.startsWith(String(year)))
+    .map(([, d]) => d[area]?.total)
     .filter((n) => n > 0)
     .sort((a, b) => a - b);
   return [0.25, 0.5, 0.75].map((q) => (v.length ? v[Math.min(v.length - 1, Math.floor((v.length - 1) * q))] : 0));

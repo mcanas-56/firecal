@@ -15,7 +15,7 @@ If `data/` has no CSVs after setup, offer to download the NASA FIRMS practice se
 
 ## Layout
 
-- `web/` the FireCal page: `index.html`, `styles.css`, `js/` split by feature (`state` shared state and actions, `calendar` daily calendar, `monthly` season + month x year calendar, `globe`, `timeline`, `theme`, `nav`, `main` wiring and data loading), bundled `vendor/d3.min.js` and `data/land.geojson`. Keep it offline apart from the web fonts
+- `web/` the FireCal page: `index.html`, `styles.css`, `js/` split by feature (`state` shared state and actions, `calendar` daily calendar, `monthly` season + month x year calendar, `ticker` fire-activity bar, `globe`, `timeline`, `theme`, `nav`, `main` wiring and data loading), bundled `vendor/d3.min.js` and `data/land.geojson`. Keep it offline apart from the web fonts
 - `design/prototype/` the firecal-demo prototype and `design/screenshots/`: the design source of truth. Port its CSS, markup and D3 code rather than redrawing from screenshots
 - `src/serve.py` the one-command start: prepares the data, then serves `web/` on localhost (standard library only). `/data/archive.json` and `/data/monthly.json` are served from `data/processed/web/`
 - `src/web_data.py` builds the page data from `data/*.csv` with the pipeline below: `archive.json` (date -> area -> {total, frp, points: [[lat, lon, frp]]}, daily VIIRS S-NPP, MODIS where no VIIRS) and `monthly.json` (per area: harmonized months, MODIS->VIIRS fit, season, daily sensor)

@@ -88,6 +88,7 @@ Options: `--port 8080`, `--no-browser`, `--skip-build` (serve the last build). `
 
 ### What's on the page
 
+- **Fire activity ticker:** the scrolling bar under the header. For the selected date or period it shows, per area, the activity level (calendar colours) and detections, the fire-season status, and the harmonized month vs the same month in another year. Real data only; hover or ⏸ pauses it.
 - **Area switch** (US-03): Canada | Argentina, plus any other country you download. It drives every section and is kept in the address (`?area=Argentina`).
 - **Fire activity calendar:** one month at a time, every day coloured by its number of hotspot detections. Uses cleaned VIIRS Suomi-NPP detections (MODIS for years without VIIRS). Colours are quartiles of the non-zero days for the selected area and year. Pick the year next to the month; click a day to jump to it on the globe.
 - **Fire season** (US-05): start, peak and end month from the harmonized record.
