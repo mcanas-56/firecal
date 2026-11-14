@@ -15,7 +15,8 @@ If `data/` has no CSVs after setup, offer to download the NASA FIRMS practice se
 
 ## Layout
 
-- `src/` app and data code; `src/app.py` is the Streamlit entry point
+- `src/` app and data code; `src/app.py` is the Streamlit entry point, `src/load_data.py` loads and cleans FIRMS CSVs (US-01), `src/harmonize.py` builds the harmonized monthly record (US-02)
+- `docs/harmonization.md` method note for US-02: read before changing the harmonization
 - `data/` raw NASA FIRMS CSVs, local only (gitignored)
 - `notebooks/` exploration
 - `tests/` tests
@@ -41,4 +42,5 @@ If `data/` has no CSVs after setup, offer to download the NASA FIRMS practice se
 - Never commit anything in `data/`, or `.env` / secrets.
 - Open a pull request into `main`; the task owner tests it against the acceptance criteria and one other teammate reviews before merge.
 - Code must work on macOS and Windows (use `pathlib`, no shell-specific commands in Python code).
+- Run tests with `python -m unittest discover -s tests` before opening a PR.
 - Keep the README current when setup or run steps change.

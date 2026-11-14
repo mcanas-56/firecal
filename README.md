@@ -144,3 +144,25 @@ No conversion between the sensors' confidence scales is claimed. Acquisition tim
 is preserved as text; this task validates acquisition dates only. No deduplication,
 monthly aggregation, confidence calibration or inference about burned area occurs;
 harmonization belongs to US-02.
+
+## Harmonize into one monthly record (US-02)
+
+From the repo root, with `.venv` activated and the practice data in `data/`:
+
+```bash
+python -m src.harmonize data/*.csv
+```
+
+This runs the US-01 loader, then turns MODIS Aqua and VIIRS Suomi-NPP detections into fire cell-days (each 0.1° grid cell counted once per day per sensor), sums them by month, fits one VIIRS/MODIS factor per area on the overlap months, and writes `data/processed/harmonized_monthly.csv` (one row per area-month, local only). It prints the factor, R², Pearson r and median % difference per area. Options: `--grid 0.25`, `--include-terra`, `--out path.csv`, `--quiet`.
+
+In Python:
+
+```python
+from pathlib import Path
+from src.load_data import load_hotspots
+from src.harmonize import harmonize
+
+table, fits = harmonize(load_hotspots(sorted(Path('data').glob('*.csv')), verbose=False))
+```
+
+Method, results and limits: [docs/harmonization.md](docs/harmonization.md).
