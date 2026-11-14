@@ -54,7 +54,9 @@ function renderCalendar() {
     btn.dataset.date = date;
     if (level !== -1) btn.style.background = COLOURS[level];
     btn.innerHTML = '<span>' + day + '</span><small>' + (entry ? entry.total.toLocaleString() : '—') + '</small>';
-    const label = date + ' · ' + (entry ? entry.total.toLocaleString() + ' detections · ' + NAMES[level] : 'no data');
+    const gap = (state.monthly?.daily_gaps?.[year] || []).includes(date);
+    const label = date + ' · ' + (entry ? entry.total.toLocaleString() + ' detections · ' + NAMES[level]
+      : gap ? 'no satellite data that day' : 'no data');
     btn.setAttribute('aria-label', label);
     btn.title = label;
     btn.setAttribute('aria-pressed', String(inPeriod));
@@ -62,8 +64,14 @@ function renderCalendar() {
     host.appendChild(btn);
   }
 
+  const gaps = state.monthly?.daily_gaps?.[year] || [];
+  const gapNote = gaps.length
+    ? ` No satellite data on ${gaps.length} day${gaps.length === 1 ? '' : 's'} this year (striped`
+      + (gaps.length > 1 ? `, ${shortDate(gaps[0])} – ${shortDate(gaps[gaps.length - 1])}` : `, ${shortDate(gaps[0])}`)
+      + '): the satellite was not recording, which is not the same as no fires.'
+    : '';
   $('heat-thresholds').textContent = Object.keys(state.archive).length
-    ? 'Positive-day quartile boundaries: ' + thresholds.map((n) => n.toLocaleString()).join(' / ') + ' detections.'
+    ? 'Positive-day quartile boundaries: ' + thresholds.map((n) => n.toLocaleString()).join(' / ') + ' detections.' + gapNote
     : 'Loading daily data…';
   $('calendar-selection').textContent = 'Selected ' + state.scale + ': ' + shortDate(p.start)
     + (p.end !== p.start ? ' – ' + shortDate(p.end) : '') + ' · ' + area

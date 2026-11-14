@@ -1,7 +1,6 @@
 import unittest
 
 import pandas as pd
-from streamlit.testing.v1 import AppTest
 
 from src.season_summary import summarize_season
 
@@ -57,23 +56,6 @@ class SeasonTests(unittest.TestCase):
                 summarize_season(bad, 'Canada')
         with self.assertRaises(ValueError):
             summarize_season(d, 'Canada', threshold_fraction=0)
-
-    def test_area_selection_updates_three_metrics(self):
-        script = '''
-import pandas as pd
-from src.season_summary import render_season_summary
-rows = []
-for area, peak in [('Canada',7), ('Argentina',1)]:
-    for month in range(1,13):
-        rows.append(dict(area=area,year=2022,month=month,harmonized=100 if month==peak else 0))
-render_season_summary(pd.DataFrame(rows))
-'''
-        app = AppTest.from_string(script).run()
-        self.assertFalse(app.exception)
-        self.assertEqual([m.value for m in app.metric], ['January']*3)
-        app.selectbox[0].select('Canada').run()
-        self.assertFalse(app.exception)
-        self.assertEqual([m.value for m in app.metric], ['July']*3)
 
 
 if __name__ == '__main__':

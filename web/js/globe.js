@@ -19,7 +19,18 @@ export function frpColour(frp) { return frp > 80 ? '#ff704c' : frp > 20 ? '#ffa4
 
 export function setPoints(pts) { points = pts; draw(); }
 
-export function fitArea() { rotation = { ...(AREA_VIEW[state.area] || AREA_VIEW.Canada) }; draw(); }
+// Known areas have a hand-picked view; any other area centres on its own hotspots.
+function areaView(area) {
+  if (AREA_VIEW[area]) return AREA_VIEW[area];
+  let lat = 0, lon = 0, n = 0;
+  for (const day of Object.values(state.archive)) {
+    for (const [la, lo] of day[area]?.points || []) { lat += la; lon += lo; n++; }
+    if (n > 2000) break;
+  }
+  return n ? { lon: lon / n, lat: Math.max(-60, Math.min(60, lat / n)) } : AREA_VIEW.Canada;
+}
+
+export function fitArea() { rotation = { ...areaView(state.area) }; draw(); }
 
 function size() {
   const w = canvas.clientWidth, h = canvas.clientHeight;
@@ -57,6 +68,7 @@ export function resize() {
 export function draw() {
   if (!ctx || !canvas.width) return;
   const { w, h, r, cx, cy } = size();
+  if (r <= 0) return;   // hidden (Report page, no-data notice) or too small to draw
   const dark = document.documentElement.dataset.theme !== 'light';
   ctx.clearRect(0, 0, w, h);
   const bg = ctx.createRadialGradient(cx, cy, r * 0.3, cx, cy, r * 1.8);

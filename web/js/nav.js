@@ -1,5 +1,5 @@
 // Home / Report a fire navigation, kept in the address (#home, #report).
-// The report form is layout only: submitting shows a note and sends nothing.
+// Report a fire is a "coming soon" preview: its form is disabled and sends nothing.
 import { $ } from './state.js';
 
 function show(page) {
@@ -21,6 +21,6 @@ export function navigate(page) {
 export function initNav() {
   document.querySelectorAll('[data-page]').forEach((el) => { el.onclick = () => navigate(el.dataset.page); });
   window.addEventListener('hashchange', () => show(pageFromHash()));
-  $('report-form').onsubmit = (e) => { e.preventDefault(); $('report-note').hidden = false; };
+  $('report-form').onsubmit = (e) => e.preventDefault();   // preview only: nothing is sent
   show(pageFromHash());
 }

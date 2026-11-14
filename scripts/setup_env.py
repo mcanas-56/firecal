@@ -25,7 +25,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 VENV = ROOT / ".venv"
 MIN_PYTHON = (3, 11)
-IMPORTS = ["pandas", "streamlit", "pydeck"]  # pydeck ships with streamlit; it draws the hotspot map
+IMPORTS = ["pandas"]  # the page itself needs no Python packages; pandas builds its data
 
 # step name -> Machine readiness column in the team doc
 READINESS = {
@@ -126,7 +126,7 @@ def app_starts(timeout: float = 20.0) -> bool:
         record("App starts", "SKIP", "src/serve.py or web/index.html not found yet")
         return True
     port = free_port()
-    cmd = [str(venv_python()), "-m", "src.serve", "--port", str(port), "--no-browser"]
+    cmd = [str(venv_python()), "-m", "src.serve", "--port", str(port), "--no-browser", "--skip-build"]
     proc = subprocess.Popen(cmd, cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     base = f"http://127.0.0.1:{port}"
     ok, problem = False, ""

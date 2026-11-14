@@ -1,5 +1,9 @@
 """FireCal colour palette for the month x year calendar (T-03).
 
+The page now uses the prototype's design colours (web/js/calendar.js, web/js/monthly.js),
+keeping the T-03 rules that zero and no data look different and that unusual years get
+an outline. This module keeps the T-03 palette for notebooks and analysis.
+
 One place for every colour the calendar uses, so US-04a (sample grid), US-04
 (real heatmap), US-06 (unusual-year flags) and US-07 (raw vs harmonized) all
 look the same. Plain hex strings and small helpers, no plotting library, so it

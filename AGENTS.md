@@ -1,6 +1,6 @@
 # FireCal
 
-Team Lanesra's NASA Space Apps Challenge project (COM805): a locally run Streamlit app that harmonizes NASA FIRMS MODIS and VIIRS hotspot detections into one monthly record and shows it as a month x year burning-activity calendar for Canada and Argentina. Built in 48 hours; tasks are specced on the team task board and implemented with a coding agent (Claude Code or Codex), then reviewed by the task owner and one teammate. This file is the shared instructions for both agents; `CLAUDE.md` just imports it.
+Team Lanesra's NASA Space Apps Challenge project (COM805): a locally run web app that harmonizes NASA FIRMS MODIS and VIIRS hotspot detections into one monthly record and shows it as daily and month x year fire-activity calendars, a fire-season summary and a hotspot globe for Canada and Argentina. Built in 48 hours; tasks are specced on the team task board and implemented with a coding agent (Claude Code or Codex), then reviewed by the task owner and one teammate. This file is the shared instructions for both agents; `CLAUDE.md` just imports it.
 
 ## Setting up a laptop
 
@@ -15,21 +15,22 @@ If `data/` has no CSVs after setup, offer to download the NASA FIRMS practice se
 
 ## Layout
 
-- `web/` the FireCal page (T-05): `index.html`, `styles.css`, `js/` split by feature (`state`, `calendar`, `globe`, `timeline`, `theme`, `nav`, `main`), bundled `vendor/d3.min.js` and `data/land.geojson`, and `data/archive.json` (date → area → {total, frp, points: [[lat, lon, frp]]}). Keep it offline apart from the web fonts
+- `web/` the FireCal page: `index.html`, `styles.css`, `js/` split by feature (`state` shared state and actions, `calendar` daily calendar, `monthly` season + month x year calendar, `globe`, `timeline`, `theme`, `nav`, `main` wiring and data loading), bundled `vendor/d3.min.js` and `data/land.geojson`. Keep it offline apart from the web fonts
 - `design/prototype/` the firecal-demo prototype and `design/screenshots/`: the design source of truth. Port its CSS, markup and D3 code rather than redrawing from screenshots
-- `src/` data code and servers; `src/serve.py` serves `web/` on localhost (standard library only), `src/app.py` is the Streamlit data view, `src/load_data.py` loads and cleans FIRMS CSVs (US-01), `src/harmonize.py` builds the harmonized monthly record (US-02), `src/app_data.py` loads or rebuilds it for the app (US-09), `src/season_summary.py` fire-season summary (US-05), `src/calendar_view.py` month x year calendar HTML (US-04a), `src/palette.py` calendar colours (T-03)
+- `src/serve.py` the one-command start: prepares the data, then serves `web/` on localhost (standard library only). `/data/archive.json` and `/data/monthly.json` are served from `data/processed/web/`
+- `src/web_data.py` builds the page data from `data/*.csv` with the pipeline below: `archive.json` (date -> area -> {total, frp, points: [[lat, lon, frp]]}, daily VIIRS S-NPP, MODIS where no VIIRS) and `monthly.json` (per area: harmonized months, MODIS->VIIRS fit, season, daily sensor)
+- `src/load_data.py` loads and cleans FIRMS CSVs (US-01), `src/harmonize.py` builds the harmonized monthly record (US-02), `src/season_summary.py` estimates the fire season (US-05), `src/app_data.py` data folder and staleness helpers (US-09), `src/palette.py` the T-03 palette notes
 - `docs/harmonization.md` method note for US-02: read before changing the harmonization
 - `data/` raw NASA FIRMS CSVs, local only (gitignored)
 - `notebooks/` exploration
 - `tests/` tests
 - `scripts/setup.sh`, `scripts/setup.ps1` setup entry points; both find Python 3.11+ and Git, then run `scripts/setup_env.py` (venv, install, smoke test, summary)
 - `scripts/get_data.py` downloads the FIRMS practice CSVs into `data/` (default: MODIS + VIIRS Suomi-NPP, 2022-2023, Canada + Argentina)
-- `requirements.txt` Python dependencies (pandas, streamlit; pydeck comes with streamlit)
+- `requirements.txt` Python dependencies (pandas only; the page needs no Python packages)
 
 ## Running
 
-- App: `python -m src.serve` (http://localhost:8000, opens the browser; next free port if taken).
-- Streamlit data views (harmonized record, season summary, month x year calendar): activate `.venv`, then `streamlit run src/app.py` (http://localhost:8501).
+- App: `python -m src.serve` (rebuilds the data when a CSV changed, serves http://localhost:8000, opens the browser; next free port if taken). `python -m src.web_data` rebuilds the data only.
 - Everything runs locally. No cloud hosting, no external API calls from the app.
 
 ## Data notes

@@ -5,7 +5,8 @@
 export const $ = (id) => document.getElementById(id);
 
 export const state = {
-  archive: {},          // web/data/archive.json: date -> area -> {total, frp, points: [[lat, lon, frp]]}
+  archive: {},          // /data/archive.json: date -> area -> {total, frp, points: [[lat, lon, frp]]}
+  monthly: null,        // /data/monthly.json: per area harmonized months, fit, season, daily sensor
   archiveError: false,
   years: [],            // years found in the archive
   year: 2023,
@@ -80,6 +81,11 @@ export function setDate(date) {
   render();
 }
 
+export function setYearMonth(year, month) {
+  state.year = year;
+  setDate(`${year}-${String(month + 1).padStart(2, '0')}-01`);
+}
+
 export function setYear(year) {
   state.year = year;
   setDate(year + '-01-01');
@@ -90,7 +96,14 @@ export function setScale(scale) {
   setDate(state.date);   // also brings the calendar back to the selected month
 }
 
+// US-03: one area choice drives every section; kept in the address (?area=Argentina).
 export function setArea(area) {
   state.area = area;
+  try {
+    const url = new URL(location.href);
+    url.searchParams.set('area', area);
+    history.replaceState(null, '', url);
+  } catch (e) { /* address not updatable (e.g. file://): selection still works */ }
+  document.dispatchEvent(new CustomEvent('firecal:fit-area'));
   setDate(state.date);
 }
