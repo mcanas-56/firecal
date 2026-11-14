@@ -8,7 +8,7 @@ A fire-season calendar built from NASA FIRMS MODIS and VIIRS hotspot data — Te
 firecal/
 ├── data/        Raw NASA FIRMS CSVs (gitignored — download locally, never commit)
 ├── web/         The FireCal page (HTML, CSS, js/ by feature, bundled D3 and land map, data/archive.json)
-├── src/         Data pipeline (load, harmonize, season, page data) and the local server (src/serve.py)
+├── src/         Data pipeline (load, harmonize, features, season, page data) and the local server (src/serve.py)
 ├── design/      The firecal-demo prototype and its screenshots: the design source of truth (T-05)
 ├── docs/        Design notes (calendar wireframe and palette: docs/t-03-calendar-design.md)
 ├── notebooks/   Exploration notebooks
@@ -188,6 +188,20 @@ table, fits = harmonize(load_hotspots(sorted(Path('data').glob('*.csv')), verbos
 ```
 
 Method, results and limits: [docs/harmonization.md](docs/harmonization.md).
+
+## Cell-month feature table (US-15)
+
+The inputs for the fire outlook (US-16) and the fire-deficit test (US-17). Build it with:
+
+```
+python -m src.features
+```
+
+This reads the VIIRS Suomi-NPP cell-days from the US-14 cache (building it first if needed) and writes `data/processed/cell_month.parquet` (local only): one row per area, 0.1° cell and month, for every cell that had a detection in the record. On 2012–2023 that is 8.3 million rows (19,097 Argentina cells and 38,432 Canada cells × 144 months), about 23 MB, built in 5 seconds from a warm cache.
+
+Each row holds what happened that month (`cell_days`, `burned`, `detections`, `frp_max`, `frp_mean`, `night_share`) and predictors that use **only earlier months**, so a model can't see the future: last month's and last year's cell-days, the share of earlier years the cell burned in this calendar month, months since it last burned, and the same activity in the 8 surrounding cells. `viirs_gap_days` flags months when VIIRS was offline, and `first_seen_year` says when the cell first burned. The full column list is at the top of `src/features.py`.
+
+Rows only exist for cells that burned at some point, so evaluate on cells first seen in the training years (`first_seen_year <= 2019`). 25% of Canada's cells and 8% of Argentina's were first seen in 2020–2023, mostly in Canada's 2023 season. `--train-end` changes the year the summary reports against.
 
 ## Fire-season summary (US-05)
 
