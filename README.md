@@ -110,6 +110,26 @@ Tested setup: Python 3.13.1, pandas 3.1.1, pyarrow 26.0.1 (macOS).
 - `No module named pandas` → set up first (`bash scripts/setup.sh`), or activate `.venv` and use its Python.
 - `python3: command not found` (Windows) → use `py -3` instead.
 
+## Public website (GitHub Pages)
+
+FireCal is published at **https://mcanas-56.github.io/firecal/**. Every push to `main` (so every merged pull request) runs `.github/workflows/pages.yml`, which:
+
+1. downloads the NASA FIRMS CSVs (cached between runs, so NASA is only asked for missing files),
+2. runs the tests,
+3. builds the data with our pipeline and copies the page and data into one folder (`python -m src.build_site`),
+4. publishes that folder to GitHub Pages.
+
+Pull requests run steps 1–3 only, so a change that breaks the site fails its check before it is merged. Progress is under the repo's **Actions** tab. The site is static files only: same page, same data as `python -m src.serve`, nothing running on a server.
+
+Build the site yourself and preview it exactly as it will be published:
+
+```bash
+python -m src.build_site                         # -> _site/
+python -m http.server --directory _site 8000     # http://localhost:8000
+```
+
+One-time setup by the repo owner: Settings → Pages → Build and deployment → Source: **GitHub Actions**. Until then Pages keeps publishing the raw `main` branch (the README), not the app.
+
 ## How we work
 
 - **Never commit straight to `main`.** One feature branch per task, named by task ID:
