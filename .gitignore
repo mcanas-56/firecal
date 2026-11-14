@@ -17,7 +17,6 @@ venv/
 
 # Secrets
 .env
-.streamlit/secrets.toml
 # Claude Code: share commands, keep personal settings local
 .claude/*
 !.claude/commands/

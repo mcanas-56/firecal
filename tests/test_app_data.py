@@ -5,11 +5,8 @@ import unittest
 from pathlib import Path
 
 import pandas as pd
-from streamlit.testing.v1 import AppTest
 
 from src.app_data import load_or_build_monthly
-
-APP = Path(__file__).resolve().parents[1] / 'src' / 'app.py'
 
 
 def write_firms(folder: Path, area: str = 'Canada', year: int = 2022) -> None:
@@ -52,34 +49,6 @@ class LoadOrBuildTests(unittest.TestCase):
         os.utime(self.data / 'modis_2022_Canada.csv', (future, future))
         _, status = load_or_build_monthly(self.data, self.out)
         self.assertEqual(status, 'built')
-
-
-class AppShellTests(unittest.TestCase):
-    def run_app(self, data_dir: Path) -> AppTest:
-        old = os.environ.get('FIRECAL_DATA_DIR')
-        os.environ['FIRECAL_DATA_DIR'] = str(data_dir)
-        try:
-            return AppTest.from_file(str(APP), default_timeout=60).run()
-        finally:
-            if old is None:
-                os.environ.pop('FIRECAL_DATA_DIR')
-            else:
-                os.environ['FIRECAL_DATA_DIR'] = old
-
-    def test_without_data_shows_download_steps(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            at = self.run_app(Path(tmp))
-        self.assertEqual([e.message for e in at.exception], [])
-        self.assertTrue(any('get_data.py' in c.value for c in at.code))
-
-    def test_with_data_shows_canada_placeholder_and_summary(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            write_firms(Path(tmp))
-            at = self.run_app(Path(tmp))
-        self.assertEqual([e.message for e in at.exception], [])
-        headers = [h.value for h in at.subheader]
-        self.assertIn('Fire-season summary', headers)
-        self.assertTrue(any('Canada' in h for h in headers), headers)
 
 
 if __name__ == '__main__':

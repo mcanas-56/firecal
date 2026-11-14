@@ -1,8 +1,7 @@
-"""Data loading for the app shell (US-09).
+"""Where FireCal's data lives, and rebuilding the harmonized record when it is stale (US-09).
 
-The app reads the harmonized monthly record from US-02. If it is missing, or any CSV in
-data/ is newer than it, the record is rebuilt first, so `streamlit run src/app.py` is the
-only command a teammate needs once the FIRMS files are downloaded.
+src/web_data.py uses these helpers so `python -m src.serve` rebuilds the page data only
+when a CSV in data/ is newer than what was built last.
 """
 from __future__ import annotations
 
@@ -51,11 +50,3 @@ def load_or_build_monthly(folder: Path, out: Path | None = None) -> tuple[pd.Dat
         table.to_csv(out, index=False)
         return pd.read_csv(out), 'built'
     return pd.read_csv(out), 'cached'
-
-
-def signature(folder: Path) -> tuple:
-    """Changes whenever a data file is added, removed or modified (Streamlit cache key)."""
-    files = csv_inputs(folder)
-    out = monthly_path(folder)
-    return tuple((p.name, p.stat().st_mtime, p.stat().st_size) for p in files) + (
-        (out.name, out.stat().st_mtime) if out.exists() else ())
