@@ -228,3 +228,4 @@ footer{display:flex;justify-content:space-between;border-top:1px solid var(--lin
 @keyframes marquee{to{transform:translateX(-50%)}}
 @media(prefers-reduced-motion:reduce){.ticker-track{animation:none}}
 @media(max-width:620px){.ticker-label{padding:0 14px;font-size:9px}.ticker-label .tag{display:none}}
+#home-page>.cards{margin-bottom:30px}
