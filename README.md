@@ -48,7 +48,17 @@ With the virtual environment active, from the repo root:
 streamlit run src/app.py
 ```
 
-The app opens in your browser at http://localhost:8501.
+The app opens in your browser at http://localhost:8501. Stop it with `Ctrl+C` in the terminal.
+
+Each time you open a new terminal, activate the environment again (`source .venv/bin/activate`) before running the app.
+
+Tested setup: Python 3.13.1, pandas 3.1.1, streamlit 1.67.0 (macOS). If the page says "If you can see this, your setup works.", you're ready.
+
+### Troubleshooting
+
+- `streamlit: command not found` → the virtual environment isn't active; run `source .venv/bin/activate`.
+- `Port 8501 is already in use` → another Streamlit is running; stop it, or run `streamlit run src/app.py --server.port 8502`.
+- `python3: command not found` (Windows) → use `python` or `py` instead of `python3`.
 
 ## How we work
 
