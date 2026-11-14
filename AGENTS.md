@@ -11,6 +11,8 @@ To set up, run scripts/setup:
 
 When asked to "set up my environment" (or `/setup` in Claude Code), run the script for this OS from the repo root, show the summary it prints, explain the first FAIL in plain words with its fix, and list the Machine readiness cells it says to mark Done. Do not install packages another way or change repo files while setting up.
 
+If `data/` has no CSVs after setup, offer to download the NASA FIRMS practice set (about 230 MB, a minute or two) and run it if they agree: `python3 scripts/get_data.py` (Windows: `py -3 scripts\get_data.py`). Re-running skips files already downloaded. `--list` shows the files; `--years`, `--countries` and `--sensors` change the set.
+
 ## Layout
 
 - `src/` app and data code; `src/app.py` is the Streamlit entry point
@@ -18,6 +20,7 @@ When asked to "set up my environment" (or `/setup` in Claude Code), run the scri
 - `notebooks/` exploration
 - `tests/` tests
 - `scripts/setup.sh`, `scripts/setup.ps1` setup entry points; both find Python 3.11+ and Git, then run `scripts/setup_env.py` (venv, install, smoke test, summary)
+- `scripts/get_data.py` downloads the FIRMS practice CSVs into `data/` (default: MODIS + VIIRS Suomi-NPP, 2022-2023, Canada + Argentina)
 - `requirements.txt` Python dependencies (pandas, streamlit; pydeck comes with streamlit)
 
 ## Running
