@@ -136,6 +136,34 @@ class GapTests(unittest.TestCase):
 
 
 class EnsureTests(unittest.TestCase):
+    def test_rebuilds_when_pipeline_code_changes(self):
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp)
+            write_year(folder, 'Canada', 2022, peak=7, lat=55.0, lon=-110.0)
+            web_data.ensure(folder, verbose=False)
+            self.assertEqual(web_data.ensure(folder, verbose=False), 'cached')
+            with mock.patch.object(web_data, 'pipeline_version', return_value='new-code'):
+                self.assertEqual(web_data.why_rebuild(folder, web_data.csv_inputs(folder)), 'the FireCal code changed')
+                self.assertEqual(web_data.ensure(folder, verbose=False), 'built')
+                self.assertEqual(web_data.ensure(folder, verbose=False), 'cached')
+
+    def test_rebuilds_when_a_file_is_removed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp)
+            write_year(folder, 'Canada', 2022, peak=7, lat=55.0, lon=-110.0)
+            write_year(folder, 'Argentina', 2022, peak=9, lat=-35.0, lon=-60.0)
+            web_data.ensure(folder, verbose=False)
+            for f in folder.glob('*_Argentina.csv'):
+                f.unlink()
+            self.assertEqual(web_data.ensure(folder, verbose=False), 'built')
+            areas = json.loads((web_data.web_dir(folder) / 'monthly.json').read_text())['areas']
+            self.assertEqual(list(areas), ['Canada'])
+
+    def test_version_ignores_line_endings(self):
+        self.assertEqual(len(web_data.pipeline_version()), 16)
+        self.assertEqual(web_data.pipeline_version(), web_data.pipeline_version())
+
     def test_no_data_then_built_then_cached_then_rebuilt(self):
         with tempfile.TemporaryDirectory() as tmp:
             folder = Path(tmp)
