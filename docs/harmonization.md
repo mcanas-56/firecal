@@ -50,6 +50,16 @@ The charter's target (harmonized MODIS and VIIRS agree with r ≥ 0.8) is met in
 - The 0.1° grid is a choice. Larger cells reduce the gap between sensors but blur location; this has not been tuned.
 - Results depend on US-01's cleaning thresholds (MODIS confidence ≥ 30, VIIRS nominal/high).
 
-## Open decision for review
+## Decision
 
-Keep the single factor (simple, matches the fire season, easy to explain to judges) or fit a curve that also handles quiet months, for example a power law (VIIRS = a × MODIS^b) fitted in log space. To decide at review by both owners.
+**Keep the single factor per area** (decided 2026-11-14 at US-02 review). It matches the fire season, which is what the calendar is for, and it is easy to explain to judges. The quiet-month underestimate above is a known, documented limit.
+
+## Enhancement (not planned for the hackathon)
+
+**Power-law calibration for quiet months.** Fit VIIRS = a × MODIS^b per area, in log space on overlap months with both counts above 0, instead of one constant factor. With b < 1 the curve scales quiet months up more than busy ones, which should shrink the 50–85% quiet-month gap while keeping the fire-season fit. To do it:
+
+- add the fit next to `fit_factors` in `src/harmonize.py` behind an option (for example `--method power`), keeping the single factor as the default;
+- compare both methods on the same overlap months (median and activity-weighted % difference, quiet vs busy months) and report them here;
+- decide how to handle months where MODIS is 0 (the power law gives 0; VIIRS usually is not).
+
+Worth doing once the full 2012–2023 overlap is downloaded, so the curve is fitted on more than 24 months.
