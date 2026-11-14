@@ -11,7 +11,7 @@ export const state = {
   years: [],            // years found in the archive
   year: 2023,
   area: 'Canada',
-  mode: 'past',         // 'past' (archive) | 'live' (coming soon: no live feed yet)
+  mode: 'past',         // 'past' (archive) | 'live' | 'predictive' (both coming soon)
   scale: 'day',         // 'day' | 'week' | 'month'
   date: '2023-07-01',   // the selected day; the selected period is the one containing it
   calMonth: 6,          // month shown in the calendar (0 = January)
@@ -77,7 +77,7 @@ export function stopPlayback() {
 
 export function setMode(mode) {
   state.mode = mode;
-  if (mode === 'live') stopPlayback();
+  if (mode !== 'past') stopPlayback();
   render();
 }
 

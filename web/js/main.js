@@ -49,13 +49,19 @@ function renderArea() {
 // invented hotspots, and any date choice returns to Past data.
 function renderMode() {
   const live = state.mode === 'live';
-  for (const [id, on] of [['live-mode', live], ['past-mode', !live]]) {
+  const predictive = state.mode === 'predictive';
+  for (const [id, on] of [['past-mode', state.mode === 'past'], ['live-mode', live], ['predictive-mode', predictive]]) {
     $(id).classList.toggle('selected', on);
     $(id).setAttribute('aria-pressed', String(on));
   }
   $('live-note').hidden = !live;
-  $('date-controls').hidden = live;
-  $('live-panel').hidden = !live;
+  $('predictive-note').hidden = !predictive;
+  $('date-controls').hidden = state.mode !== 'past';
+  $('live-panel').hidden = state.mode === 'past';
+  document.querySelector('.timeline').hidden = state.mode !== 'past';
+  document.querySelector('.map-legend').hidden = state.mode !== 'past';
+  $('mode-panel-title').textContent = predictive ? 'Predictive data is coming soon' : 'Live data is coming soon';
+  $('mode-panel-description').textContent = predictive ? 'No forecast model is connected. The calendar remains historical; choose Past data to explore observations.' : 'Near-real-time NASA FIRMS hotspots from the last 24 hours will appear on this globe.';
 }
 
 function renderLive() {
@@ -69,9 +75,23 @@ function renderLive() {
   setPoints([]);
 }
 
+function renderPredictive() {
+  $('map-label').textContent = 'PREDICTIVE DATA · COMING SOON';
+  $('hotspot-count').textContent = '—';
+  $('count-note').textContent = `No forecast model connected · ${state.area}`;
+  $('window-stat').textContent = '—';
+  $('window-note').textContent = 'Forecast window not available';
+  $('month-stat').textContent = '—';
+  $('month-note').textContent = 'No predicted activity available';
+  $('map-detail').textContent = `${state.area} · Predictive data is coming soon · no forecasts generated`;
+  $('empty-map').hidden = true;
+  setPoints([]);
+}
+
 // Globe markers, map caption and stat cards for the selected area and period.
 function renderSelection() {
   if (state.mode === 'live') { renderLive(); return; }
+  if (state.mode === 'predictive') { renderPredictive(); return; }
   const p = selectedPeriod();
   const label = periodLabel(p);
   const area = state.area;
@@ -154,6 +174,7 @@ function init() {
   $('show-hotspots').onchange = renderSelection;
   $('live-mode').onclick = () => setMode('live');
   $('past-mode').onclick = () => setMode('past');
+  $('predictive-mode').onclick = () => setMode('predictive');
   $('live-back').onclick = () => setMode('past');
   document.dispatchEvent(new CustomEvent('firecal:fit-area'));
   render();

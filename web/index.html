@@ -49,8 +49,9 @@ python -m src.serve</code></pre>
     <aside class="filters">
       <p class="section-label">Explore the globe</p>
       <div class="segmented" role="group" aria-label="Globe mode">
-        <button type="button" id="live-mode" data-mode="live" aria-pressed="false">● Live view</button>
         <button type="button" id="past-mode" data-mode="past" class="selected" aria-pressed="true">Past data</button>
+        <button type="button" id="live-mode" data-mode="live" aria-pressed="false">Live data</button>
+        <button type="button" id="predictive-mode" data-mode="predictive" aria-pressed="false">Predictive data</button>
       </div>
       <label for="region">Area of interest</label>
       <select id="region"><option>Canada</option><option>Argentina</option></select>
@@ -58,6 +59,7 @@ python -m src.serve</code></pre>
         <label>Observation window</label>
         <div class="source-note"><strong>Last 24 hours · coming soon</strong><br>Live view will show near-real-time NASA FIRMS hotspots as they are detected. Until then, Past data shows the archive.</div>
       </div>
+      <div id="predictive-note" class="predictive-note" hidden><strong>Predictive data · coming soon</strong><p>Future fire-activity outlooks will appear here once a model is validated. No forecasts are available yet.</p></div>
       <div id="date-controls">
         <label for="map-date">Observation date</label>
         <input type="date" id="map-date">
@@ -82,7 +84,7 @@ python -m src.serve</code></pre>
       <div id="empty-map" class="map-empty" hidden></div>
       <div id="live-panel" class="live-announce" role="status" hidden>
         <span class="dot live-dot"></span>
-        <div><strong>Live view is coming soon</strong><span>Near-real-time NASA FIRMS hotspots from the last 24 hours will appear on this globe.</span></div>
+        <div><strong id="mode-panel-title">Live data is coming soon</strong><span id="mode-panel-description">Near-real-time NASA FIRMS hotspots from the last 24 hours will appear on this globe.</span></div>
         <button type="button" class="linkbtn" id="live-back">See past data →</button>
       </div>
       <div class="timeline">

@@ -236,3 +236,7 @@ The **Month by year** grid on the page shows the harmonized record from US-02: o
 ## Area selection (US-03)
 
 The area switch at the top of the page (Canada | Argentina) drives every section: daily calendar, season, month × year calendar, globe and stat cards. Canada is the default. The choice is kept in the page address, so `http://localhost:8000/?area=Argentina` opens straight on Argentina; an unknown area falls back to Canada. Areas come from the data, so downloading another country with `get_data.py --countries` adds it to the switch.
+
+### Globe data modes
+
+The globe tabs are ordered **Past data → Live data → Predictive data**. Past data uses the loaded NASA FIRMS archive. Live data and Predictive data are labelled coming soon, with no invented detections or forecasts. Selecting an archive date returns to Past data.
