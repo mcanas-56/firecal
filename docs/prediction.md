@@ -54,6 +54,14 @@ It holds in each test year: Canada's AUC is 0.852 in 2022 and 0.850 in 2023 (bas
 | Argentina | August | September | August | 100% |
 | Canada | July | July | August | 80% |
 
+## In the app (US-18)
+
+The globe's **Outlook** mode shows these outlooks from `outlook.json` (`src/outlook.py`):
+- **Next-month outlook:** the model refitted on every year for the month after the record ends.
+- **Back-test:** each 2022–2023 month from the tested model, with the fires that happened drawn as rings. Fires in cells it could not score count as misses.
+
+On average, 55% of Argentina's back-test fire cells and 23% of Canada's fell on mapped cells (chance ≥ 5%, top 2,500 cells).
+
 ## Outputs
 
 Written to `data/processed/prediction/` (local only):

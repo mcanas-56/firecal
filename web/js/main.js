@@ -8,6 +8,7 @@ import { initTheme } from './theme.js';
 import { initNav } from './nav.js';
 import { initMonthly } from './monthly.js';
 import { initTicker } from './ticker.js';
+import { initOutlook, outlookReady, renderOutlook } from './outlook.js';
 
 const DEFAULT_AREA = 'Canada';
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -47,15 +48,44 @@ function renderArea() {
 
 // Live view is part of the MVP layout but has no feed yet: it says so instead of showing
 // invented hotspots, and any date choice returns to Past data.
+// Outlook (US-18) shows the fire outlook from outlook.json, or why it isn't available.
 function renderMode() {
   const live = state.mode === 'live';
-  for (const [id, on] of [['live-mode', live], ['past-mode', !live]]) {
+  const outlook = state.mode === 'outlook';
+  const ready = outlook && outlookReady();
+  for (const [id, on] of [['live-mode', live], ['past-mode', state.mode === 'past'], ['outlook-mode', outlook]]) {
     $(id).classList.toggle('selected', on);
     $(id).setAttribute('aria-pressed', String(on));
   }
   $('live-note').hidden = !live;
-  $('date-controls').hidden = live;
+  $('date-controls').hidden = state.mode !== 'past';
   $('live-panel').hidden = !live;
+  $('outlook-controls').hidden = !ready;
+  $('outlook-unavailable').hidden = !outlook || ready;
+  $('outlook-legend').hidden = !ready;
+  $('hotspot-legend').hidden = outlook;
+  document.querySelector('.timeline').hidden = outlook;   // the time explorer is for the archive
+}
+
+// Stat card titles for Past data and Live view; the outlook sets its own.
+function resetCards() {
+  $('count-title').textContent = 'Hotspot detections';
+  $('count-tag').textContent = 'NASA FIRMS';
+  $('window-title').textContent = 'Observation window';
+  $('month-title').textContent = 'Harmonized month';
+}
+
+function renderOutlookMode() {
+  if (outlookReady()) { renderOutlook(); return; }
+  const reason = state.outlook?.status === 'unavailable' ? state.outlook.reason
+    : state.outlook ? 'No outlook for this area.' : 'Loading the outlook…';
+  $('outlook-reason').textContent = reason;
+  $('map-label').textContent = 'OUTLOOK · NOT AVAILABLE';
+  for (const id of ['hotspot-count', 'window-stat', 'month-stat']) $(id).textContent = '—';
+  for (const id of ['count-note', 'window-note', 'month-note']) $(id).textContent = '';
+  $('map-detail').textContent = `${state.area} · Outlook not available: ${reason}`;
+  $('empty-map').hidden = true;
+  setPoints([]);
 }
 
 function renderLive() {
@@ -71,7 +101,9 @@ function renderLive() {
 
 // Globe markers, map caption and stat cards for the selected area and period.
 function renderSelection() {
+  resetCards();
   if (state.mode === 'live') { renderLive(); return; }
+  if (state.mode === 'outlook') { renderOutlookMode(); return; }
   const p = selectedPeriod();
   const label = periodLabel(p);
   const area = state.area;
@@ -118,6 +150,9 @@ async function loadData() {
     if (monthly.status === 'no_data' || !Object.keys(archive).length) throw new Error('no data yet');
     state.archive = archive;
     state.monthly = monthly;
+    // The outlook is optional: the rest of the page works without it.
+    loadJSON('data/outlook.json').then((o) => { state.outlook = o; render(); })
+      .catch(() => { state.outlook = { status: 'unavailable', reason: 'outlook.json could not be loaded.', areas: {} }; render(); });
     state.years = [...new Set(Object.keys(archive).map((d) => Number(d.slice(0, 4))))].sort();
     const areas = areasInData();
     buildAreaControls(areas);
@@ -145,6 +180,7 @@ function init() {
   initMonthly();
   initTicker();
   initTimeline();
+  initOutlook();
   onRender(renderMode);
   onRender(renderArea);
   onRender(renderSelection);
@@ -154,6 +190,7 @@ function init() {
   $('show-hotspots').onchange = renderSelection;
   $('live-mode').onclick = () => setMode('live');
   $('past-mode').onclick = () => setMode('past');
+  $('outlook-mode').onclick = () => setMode('outlook');
   $('live-back').onclick = () => setMode('past');
   document.dispatchEvent(new CustomEvent('firecal:fit-area'));
   render();

@@ -240,3 +240,11 @@ footer{display:flex;justify-content:space-between;border-top:1px solid var(--lin
 @media(max-width:900px){.live-announce{max-width:calc(100% - 120px)}}
 @media(max-width:620px){.live-announce{top:auto;bottom:250px;left:12px;right:12px;transform:none;max-width:none;padding:8px 12px;gap:10px}.live-announce>div{flex:1;min-width:0}.live-announce span:not(.dot){display:none}.live-announce strong{font-size:13px}}
 #live-mode{display:inline-flex;align-items:center;justify-content:center;gap:2px}
+
+/* Outlook mode (US-18): month picker, notes and the chance-of-fire legend on the globe. */
+#outlook-controls select{width:100%}
+.outlook-note{margin:12px 0 20px;padding:14px;border:1px solid var(--line);border-radius:7px;background:var(--raised);font-size:12px;line-height:1.6}
+.outlook-note p{margin:6px 0 0;color:var(--muted)}
+#map .outlook-legend{bottom:16px;left:16px}
+.outlook-legend .ring{display:inline-block;width:9px;height:9px;border-radius:50%;border:1.5px solid #1f6f9a;margin-right:4px;vertical-align:-1px}
+[data-theme="dark"] .outlook-legend .ring{border-color:#8fdcff}

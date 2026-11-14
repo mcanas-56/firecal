@@ -7,11 +7,13 @@ export const $ = (id) => document.getElementById(id);
 export const state = {
   archive: {},          // /data/archive.json: date -> area -> {total, frp, points: [[lat, lon, frp]]}
   monthly: null,        // /data/monthly.json: per area harmonized months, fit, season, daily sensor
+  outlook: null,        // /data/outlook.json: next-month outlook, back-tests, skill (US-18)
+  outlookMonth: 'forecast', // 'forecast' or a back-test month 'YYYY-MM'
   archiveError: false,
   years: [],            // years found in the archive
   year: 2023,
   area: 'Canada',
-  mode: 'past',         // 'past' (archive) | 'live' (coming soon: no live feed yet)
+  mode: 'past',         // 'past' (archive) | 'live' (coming soon: no live feed yet) | 'outlook' (US-18)
   scale: 'day',         // 'day' | 'week' | 'month'
   date: '2023-07-01',   // the selected day; the selected period is the one containing it
   calMonth: 6,          // month shown in the calendar (0 = January)
@@ -77,7 +79,7 @@ export function stopPlayback() {
 
 export function setMode(mode) {
   state.mode = mode;
-  if (mode === 'live') stopPlayback();
+  if (mode !== 'past') stopPlayback();   // playback only moves through the archive
   render();
 }
 

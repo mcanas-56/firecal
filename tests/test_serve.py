@@ -61,6 +61,8 @@ class ServeTests(unittest.TestCase):
         self.assertEqual(archive['2022-07-15']['Canada']['total'], 21)
         _, _, body = self.get('/data/monthly.json')
         self.assertIn('Canada', json.loads(body)['areas'])
+        _, _, body = self.get('/data/outlook.json')
+        self.assertIn(json.loads(body)['status'], ('ok', 'unavailable'))
 
     def test_before_first_build_data_says_no_data(self):
         port = self.empty.server_address[1]
@@ -68,6 +70,8 @@ class ServeTests(unittest.TestCase):
             self.assertEqual(json.loads(r.read())['status'], 'no_data')
         with urllib.request.urlopen(f'http://127.0.0.1:{port}/data/archive.json', timeout=5) as r:
             self.assertEqual(json.loads(r.read()), {})
+        with urllib.request.urlopen(f'http://127.0.0.1:{port}/data/outlook.json', timeout=5) as r:
+            self.assertEqual(json.loads(r.read())['status'], 'no_data')
 
     def test_missing_file_is_404_and_parent_folders_are_not_served(self):
         for path in ('/nope.html', '/../src/serve.py', '/%2e%2e/src/serve.py'):

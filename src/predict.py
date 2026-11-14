@@ -176,10 +176,12 @@ def _rows(df: pd.DataFrame, years: tuple[int, int], seen_by: int) -> pd.DataFram
               & (df['viirs_gap_days'] == 0) & (df['first_seen_year'] <= seen_by)]
 
 
-def cell_models(table: pd.DataFrame, train=TRAIN, tune=TUNE, test=TEST, l2_choices=L2_CHOICES):
+def cell_models(table: pd.DataFrame, train=TRAIN, tune=TUNE, test=TEST, l2_choices=L2_CHOICES,
+                models_out: dict | None = None):
     """Per area: pick L2 on tune, refit on train+tune, score baseline and model on test.
 
-    Returns (results per area, test predictions DataFrame).
+    Returns (results per area, test predictions DataFrame). Pass a dict as models_out
+    to receive the tested model per area (for predictions on other rows).
     """
     results, preds = {}, []
     for area, df in table.groupby('area', observed=True):
@@ -191,6 +193,8 @@ def cell_models(table: pd.DataFrame, train=TRAIN, tune=TUNE, test=TEST, l2_choic
         best = min(tuning, key=tuning.get)
         full = _rows(df, (train[0], tune[1]), tune[1])
         model = fit_logistic(design(full), full['burned'].to_numpy(), l2=best)
+        if models_out is not None:
+            models_out[str(area)] = model
         ev = _rows(df, test, tune[1])
         y = ev['burned'].to_numpy()
         p_base = ev['past_rate_month'].fillna(0).to_numpy(dtype='float64')

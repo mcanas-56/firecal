@@ -1,10 +1,11 @@
 """Start FireCal. One command:  python -m src.serve
 
 1. Prepares the page data from data/*.csv with our pipeline (src/web_data.py: US-01
-   cleaning, US-02 harmonization, US-05 season summary). Only when a CSV changed;
-   otherwise it reuses data/processed/.
+   cleaning, US-02 harmonization, US-05 season summary, US-18 outlook). Only when a CSV
+   changed; otherwise it reuses data/processed/.
 2. Serves web/ on http://localhost:8000 (the next free port if 8000 is taken), with
-   /data/archive.json and /data/monthly.json coming from data/processed/web/.
+   /data/archive.json, /data/monthly.json and /data/outlook.json coming from
+   data/processed/web/.
 3. Opens the browser.
 
 Local only: it listens on 127.0.0.1 and the page makes no calls except the web fonts.
@@ -27,7 +28,7 @@ ROOT = Path(__file__).resolve().parent.parent
 WEB = ROOT / 'web'
 HOST = '127.0.0.1'
 DEFAULT_PORT = 8000
-GENERATED = ('archive.json', 'monthly.json')   # served at /data/<name> from data/processed/web/
+GENERATED = ('archive.json', 'monthly.json', 'outlook.json')   # served at /data/<name> from data/processed/web/
 
 
 class Handler(http.server.SimpleHTTPRequestHandler):

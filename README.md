@@ -81,7 +81,7 @@ python -m src.serve        # Windows: py -3 -m src.serve
 
 That's the only command. It:
 
-1. prepares the data from `data/*.csv` with our pipeline: cleans the hotspots (US-01), harmonizes MODIS and VIIRS into one monthly record (US-02) and estimates the fire season (US-05). This takes about 20–30 seconds the first time for the full 2012–2023 set, and runs again only when the data files or the pipeline code change (for example after a `git pull`). The results go to `data/processed/` (local, gitignored).
+1. prepares the data from `data/*.csv` with our pipeline: cleans the hotspots (US-01), harmonizes MODIS and VIIRS into one monthly record (US-02), estimates the fire season (US-05) and fits the fire outlook (US-18). This takes about a minute the first time for the full 2012–2023 set, and runs again only when the data files or the pipeline code change (for example after a `git pull`). The results go to `data/processed/` (local, gitignored).
 2. serves the page at http://localhost:8000 (the next free port if 8000 is taken) and opens your browser. Stop it with `Ctrl+C`.
 
 Options: `--port 8080`, `--no-browser`, `--skip-build` (serve the last build). `python -m src.web_data` rebuilds the data without starting the server. With no data yet, the page shows the download command.
@@ -253,3 +253,13 @@ The **Month by year** grid on the page shows the harmonized record from US-02: o
 ## Area selection (US-03)
 
 The area switch at the top of the page (Canada | Argentina) drives every section: daily calendar, season, month × year calendar, globe and stat cards. Canada is the default. The choice is kept in the page address, so `http://localhost:8000/?area=Argentina` opens straight on Argentina; an unknown area falls back to Canada. Areas come from the data, so downloading another country with `get_data.py --countries` adds it to the switch.
+
+## Outlook mode (US-18)
+
+The globe's third tab, **Outlook**, shows the US-16 fire outlook, labelled *Outlook from 2012–2023 patterns, not a forecast*. Pick a month in the sidebar:
+- **Next-month outlook** (January 2024, the month after the record ends): every 0.1° cell with at least a 5% chance of a fire cell-day, coloured 5–20%, 20–50% and 50%+. The cards show how many cells reach 30%, the expected harmonized fire cell-days for the area (with the normal and the past low–high range), and the typical peak month.
+- **Back-test** (any month of 2022–2023): what the tested model expected, with the fires that actually happened drawn as rings. The cards show the share of fires that landed on mapped cells (fires in places with no fire since 2012 count as misses) and the monthly estimate against the actual value. Months when VIIRS was offline are shown, flagged and left out of the scores.
+
+The sidebar note gives each model's test score against its climatology baseline. If a model had not beaten its baseline, the map would show the baseline instead.
+
+The page builds `outlook.json` with the rest of its data (`src/outlook.py`, run in its own process, about 30 extra seconds). It needs the full 2012–2023 download; with fewer years, the Outlook tab says which years are missing.
