@@ -208,7 +208,7 @@ def main(argv: list[str] | None = None) -> int:
     no_fit = fits.loc[fits['factor'].isna(), 'area'].tolist()
     if no_fit:
         print(f"\nNo factor for {', '.join(no_fit)}: needs months with both MODIS and VIIRS data "
-              '(download both sensors for the same years). Their harmonized values are VIIRS-only.')
+              '(download both sensors for the same years). Months without VIIRS have no harmonized value.')
     print(f'\nWrote {len(table):,} area-months to {args.out}')
     return 0
 
