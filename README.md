@@ -7,7 +7,8 @@ A fire-season calendar built from NASA FIRMS MODIS and VIIRS hotspot data — Te
 ```
 firecal/
 ├── data/        Raw NASA FIRMS CSVs (gitignored — download locally, never commit)
-├── src/         App and data-processing code (entry point: src/app.py)
+├── src/         App and data-processing code (entry point: src/app.py; colours in src/palette.py)
+├── docs/        Design notes (calendar wireframe and palette: docs/t-03-calendar-design.md)
 ├── notebooks/   Exploration notebooks
 ├── tests/       Tests
 ├── scripts/     setup.sh (macOS) / setup.ps1 (Windows), the setup engine, get_data.py
