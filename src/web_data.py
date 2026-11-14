@@ -207,7 +207,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         build(args.data)
     except FileNotFoundError as exc:
-        print(f'{exc}. Download the practice set with: python3 scripts/get_data.py')
+        print(f'{exc}. Download the data (2012-2023) with: python3 scripts/get_data.py')
         return 1
     return 0
 

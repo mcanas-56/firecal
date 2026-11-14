@@ -98,7 +98,7 @@ def main(argv: list[str] | None = None) -> int:
         from src.web_data import ensure
         if ensure() == 'no_data':
             get = 'py -3 scripts\\get_data.py' if sys.platform == 'win32' else 'python3 scripts/get_data.py'
-            print(f'No FIRMS data in data/ yet. Download the practice set with:  {get}\n'
+            print(f'No FIRMS data in data/ yet. Download the data (2012-2023) with:  {get}\n'
                   'The page opens anyway and shows the same instructions.')
     server = make_server(args.port)
     url = f'http://localhost:{server.server_address[1]}/'

@@ -14,12 +14,20 @@ Method (see docs/harmonization.md):
 6. Build the harmonized series: VIIRS where it exists, with VIIRS gap days filled by
    that day's MODIS x factor; otherwise MODIS x factor.
 
+Checks (US-14): the factor fitted per year shows whether one factor per area is stable,
+and a power-law fit (VIIRS = a x MODIS^b) is compared with the single factor. The
+published series keeps the single factor (team decision, docs/harmonization.md).
+
+The command line reads each CSV once into a daily cell table cached as Parquet in
+data/processed/cells/, so a rebuild of 2012-2023 never holds every detection in memory.
+
 Rebuild everything with:  python -m src.harmonize data/*.csv
 """
 from __future__ import annotations
 
 import argparse
 import glob
+import json
 import re
 from pathlib import Path
 
@@ -28,6 +36,9 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_OUT = ROOT / 'data' / 'processed' / 'harmonized_monthly.csv'
+CACHE_DIR = ROOT / 'data' / 'processed' / 'cells'
+CACHE_VERSION = 2
+CELL_KEYS = ['area', 'sensor', 'date', 'ci', 'cj']
 
 # FIRMS 'satellite' values: MODIS reports Aqua/Terra; VIIRS Suomi-NPP reports 'N'.
 MATCHED_SATELLITES = {
@@ -76,7 +87,12 @@ def _coverage(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _cell_days(df: pd.DataFrame, grid: float, include_terra: bool) -> pd.DataFrame:
-    """Steps 1-2. One row per area, sensor, date and grid cell with a detection."""
+    """Steps 1-2. One row per area, sensor, date and grid cell with a detection.
+
+    Also keeps, per cell-day, the number of detections, night detections, and the
+    highest and summed FRP (MW), so the cached table can feed later features (US-15)
+    without re-reading the CSVs.
+    """
     if grid <= 0:
         raise ValueError('grid must be positive (degrees)')
     sensor = _sensor(df['instrument'])
@@ -89,8 +105,14 @@ def _cell_days(df: pd.DataFrame, grid: float, include_terra: bool) -> pd.DataFra
         # small epsilon so values exactly on a grid line don't fall into the cell below
         'ci': np.floor(df['latitude'].astype(float) / grid + 1e-9).astype('int64'),
         'cj': np.floor(df['longitude'].astype(float) / grid + 1e-9).astype('int64'),
-    })[keep.fillna(False)]
-    return d.drop_duplicates(['area', 'sensor', 'date', 'ci', 'cj'])
+        'frp': pd.to_numeric(df['frp'], errors='coerce') if 'frp' in df else np.nan,
+        'night': (df['daynight'].astype('string').str.strip().str.upper().eq('N').fillna(False)
+                  if 'daynight' in df else False),
+    })[keep.fillna(False).astype(bool)]
+    return (d.groupby(CELL_KEYS, sort=False)
+            .agg(detections=('frp', 'size'), night=('night', 'sum'),
+                 frp_max=('frp', 'max'), frp_sum=('frp', 'sum'))
+            .reset_index())
 
 
 def sensor_gaps(cells: pd.DataFrame, coverage: pd.DataFrame) -> pd.DataFrame:
@@ -197,14 +219,78 @@ def fit_factors(wide: pd.DataFrame) -> pd.DataFrame:
                                       'median_abs_pct_diff', 'overlap_months'])
 
 
+def fit_factors_by_year(wide: pd.DataFrame) -> pd.DataFrame:
+    """The single factor fitted on each year alone: area, year + the fit_factors columns.
+
+    One factor per area assumes the MODIS-VIIRS ratio is stable over time; this shows
+    whether it is.
+    """
+    parts = []
+    for year, grp in wide.groupby('year'):
+        fits = fit_factors(grp)
+        fits.insert(1, 'year', int(year))
+        parts.append(fits)
+    if not parts:
+        return pd.DataFrame(columns=['area', 'year', 'factor', 'r2', 'pearson_r',
+                                     'median_abs_pct_diff', 'overlap_months'])
+    return pd.concat(parts, ignore_index=True).sort_values(['area', 'year'], ignore_index=True)
+
+
+def _errors(v: np.ndarray, scaled: np.ndarray) -> tuple[float, float]:
+    """(median |% diff|, activity-weighted |% diff|) over months with VIIRS > 0."""
+    pos = v > 0
+    if not pos.any():
+        return np.nan, np.nan
+    diff = np.abs(scaled[pos] - v[pos])
+    return float(np.median(diff / v[pos]) * 100), float(diff.sum() / v[pos].sum() * 100)
+
+
+def compare_methods(wide: pd.DataFrame) -> pd.DataFrame:
+    """Single factor vs power law (VIIRS = a x MODIS^b) on the same overlap months.
+
+    The power law is fitted in log space on months where both counts are above 0; a
+    month with MODIS 0 is predicted as 0. Quiet months are those with VIIRS below the
+    area's median overlap month, busy months the rest. One row per area and method.
+    """
+    rows = []
+    for area, grp in wide.groupby('area'):
+        both = grp.dropna(subset=['modis_cell_days', 'viirs_cell_days'])
+        m = both['modis_cell_days'].astype(float).to_numpy()
+        v = both['viirs_cell_days'].astype(float).to_numpy()
+        if not len(both) or (m * m).sum() == 0:
+            continue
+        quiet = v < np.median(v)
+        factor = float((m * v).sum() / (m * m).sum())
+        candidates = [('factor', f'factor {factor:.2f}', factor * m)]
+        pos = (m > 0) & (v > 0)
+        if pos.sum() >= 3 and np.log(m[pos]).std() > 0:
+            b, log_a = np.polyfit(np.log(m[pos]), np.log(v[pos]), 1)
+            a = float(np.exp(log_a))
+            candidates.append(('power', f'a {a:.2f}, b {b:.2f}', np.where(m > 0, a * np.power(m, b), 0.0)))
+        for method, params, scaled in candidates:
+            median_all, weighted = _errors(v, scaled)
+            rows.append(dict(area=area, method=method, params=params,
+                             median_abs_pct_diff=median_all, weighted_abs_pct_diff=weighted,
+                             quiet_median_abs_pct_diff=_errors(v[quiet], scaled[quiet])[0],
+                             busy_median_abs_pct_diff=_errors(v[~quiet], scaled[~quiet])[0],
+                             overlap_months=len(both)))
+    return pd.DataFrame(rows, columns=['area', 'method', 'params', 'median_abs_pct_diff',
+                                       'weighted_abs_pct_diff', 'quiet_median_abs_pct_diff',
+                                       'busy_median_abs_pct_diff', 'overlap_months'])
+
+
 def harmonize(df: pd.DataFrame, grid: float = 0.1, include_terra: bool = False) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Steps 1-6. Returns (monthly table with OUTPUT_COLUMNS, per-area fit table).
 
     The fit table also has gap_days: the satellite-gap days left out of that area's fit.
-    table.attrs['gaps'] lists every gap day (sensor, date).
+    table.attrs['gaps'] lists every gap day (sensor, date); fits.attrs['by_year'] and
+    fits.attrs['methods'] hold fit_factors_by_year and compare_methods on the fit months.
     """
-    cells = _cell_days(df, grid, include_terra)
-    coverage = _coverage(df)
+    return harmonize_cells(_cell_days(df, grid, include_terra), _coverage(df))
+
+
+def harmonize_cells(cells: pd.DataFrame, coverage: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """harmonize() from a daily cell table (_cell_days / cached_cells) and its coverage."""
     gaps = sensor_gaps(cells, coverage)
     gap_dates = set(gaps['date'])
     viirs_gap_dates = set(gaps.loc[gaps['sensor'] == 'viirs', 'date'])
@@ -212,8 +298,11 @@ def harmonize(df: pd.DataFrame, grid: float = 0.1, include_terra: bool = False) 
     wide = _wide(_monthly(cells, coverage))
     # Fit on days both sensors were recording.
     fit_cells = cells[~cells['date'].isin(gap_dates)]
-    fits = fit_factors(_wide(_monthly(fit_cells, coverage)))
+    fit_wide = _wide(_monthly(fit_cells, coverage))
+    fits = fit_factors(fit_wide)
     fits['gap_days'] = len(gap_dates)
+    fits.attrs['by_year'] = fit_factors_by_year(fit_wide)
+    fits.attrs['methods'] = compare_methods(fit_wide)
     wide['factor'] = wide['area'].map(fits.set_index('area')['factor'])
     wide['modis_scaled'] = wide['modis_cell_days'].astype('Float64') * wide['factor']
 
@@ -245,6 +334,76 @@ def harmonize(df: pd.DataFrame, grid: float = 0.1, include_terra: bool = False) 
     return table, fits
 
 
+def _cache_key(path: Path, grid: float, include_terra: bool, min_modis_confidence: float) -> dict:
+    stat = path.stat()
+    return {'version': CACHE_VERSION, 'file': path.name, 'size': stat.st_size,
+            'mtime_ns': stat.st_mtime_ns, 'grid': grid, 'include_terra': include_terra,
+            'min_modis_confidence': min_modis_confidence}
+
+
+def _read_cache(parquet: Path, meta: Path, key: dict) -> tuple[pd.DataFrame, pd.DataFrame] | None:
+    if not (parquet.exists() and meta.exists()):
+        return None
+    try:
+        info = json.loads(meta.read_text(encoding='utf-8'))
+        if info.get('key') != key:
+            return None
+        cells = pd.read_parquet(parquet)
+        coverage = pd.DataFrame(info['coverage'], columns=['area', 'sensor', 'period'])
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+    coverage['period'] = pd.PeriodIndex(coverage['period'], freq='M')
+    return cells, coverage
+
+
+def cached_cells(paths, grid: float = 0.1, include_terra: bool = False, *,
+                 min_modis_confidence: float = 30, cache_dir: Path = CACHE_DIR,
+                 verbose: bool = False) -> tuple[pd.DataFrame, pd.DataFrame, int]:
+    """Daily cell table and coverage for many CSVs, reading one CSV at a time.
+
+    Each CSV is cleaned with load_hotspots and reduced to cell-days, then cached as
+    <cache_dir>/<name>_g<grid>[_terra].parquet with a .json beside it holding the cache
+    key (file size, modification time, settings) and the file's month coverage. A CSV
+    is read again only when it or a setting changed. Returns (cells, coverage, number
+    of files rebuilt); feed the first two to harmonize_cells.
+    """
+    from src.load_data import load_hotspots
+
+    cache_dir = Path(cache_dir)
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    cell_parts, coverage_parts, rebuilt = [], [], 0
+    for path in map(Path, paths):
+        key = _cache_key(path, grid, include_terra, min_modis_confidence)
+        stem = f"{path.stem}_g{grid:g}{'_terra' if include_terra else ''}"
+        parquet, meta = cache_dir / f'{stem}.parquet', cache_dir / f'{stem}.json'
+        cached = _read_cache(parquet, meta, key)
+        if cached is None:
+            df = load_hotspots([path], min_modis_confidence=min_modis_confidence, verbose=verbose)
+            cells, coverage = _cell_days(df, grid, include_terra), _coverage(df)
+            del df
+            cells.to_parquet(parquet, index=False)
+            meta.write_text(json.dumps({'key': key, 'coverage': [
+                [str(a), str(s), str(p)] for a, s, p in coverage[['area', 'sensor', 'period']].itertuples(index=False)
+            ]}), encoding='utf-8')
+            rebuilt += 1
+        else:
+            cells, coverage = cached
+        cell_parts.append(cells)
+        coverage_parts.append(coverage)
+    if not cell_parts:
+        raise ValueError('no CSV files given')
+    cells = pd.concat(cell_parts, ignore_index=True)
+    cells['area'] = cells['area'].astype('string')
+    cells['sensor'] = cells['sensor'].astype('string')
+    cells['date'] = pd.to_datetime(cells['date'])
+    if cells.duplicated(CELL_KEYS).any():  # the same area, sensor and day in two files
+        cells = (cells.groupby(CELL_KEYS, sort=False)
+                 .agg(detections=('detections', 'sum'), night=('night', 'sum'),
+                      frp_max=('frp_max', 'max'), frp_sum=('frp_sum', 'sum')).reset_index())
+    coverage = pd.concat(coverage_parts, ignore_index=True).drop_duplicates(ignore_index=True)
+    return cells, coverage, rebuilt
+
+
 def _expand(paths: list[str]) -> list[Path]:
     """Expand globs ourselves so `data/*.csv` also works in Windows PowerShell."""
     out: list[Path] = []
@@ -264,16 +423,32 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument('--include-terra', action='store_true', help='also use MODIS Terra')
     parser.add_argument('--out', type=Path, default=DEFAULT_OUT, help='output CSV path')
     parser.add_argument('--quiet', action='store_true', help="don't print per-file cleaning counts")
+    parser.add_argument('--cache-dir', type=Path, default=CACHE_DIR,
+                        help='where the per-file cell-day cache lives (default: data/processed/cells)')
+    parser.add_argument('--no-cache', action='store_true',
+                        help='load every CSV at once instead of using the cache (needs much more memory)')
     args = parser.parse_args(argv)
 
     paths = _expand(args.paths)
     if not paths:
         parser.error('no CSV files found; download them with: python3 scripts/get_data.py')
-    df = load_hotspots(paths, verbose=not args.quiet)
-    table, fits = harmonize(df, grid=args.grid, include_terra=args.include_terra)
+    if args.no_cache:
+        df = load_hotspots(paths, verbose=not args.quiet)
+        table, fits = harmonize(df, grid=args.grid, include_terra=args.include_terra)
+    else:
+        cells, coverage, rebuilt = cached_cells(paths, args.grid, args.include_terra,
+                                                cache_dir=args.cache_dir, verbose=not args.quiet)
+        print(f'Cell-day cache: {rebuilt} of {len(paths)} file(s) read from CSV, '
+              f'{len(paths) - rebuilt} from {args.cache_dir}')
+        table, fits = harmonize_cells(cells, coverage)
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
     table.to_csv(args.out, index=False)
+    by_year_out = args.out.with_name(f'{args.out.stem}_factors_by_year.csv')
+    methods_out = args.out.with_name(f'{args.out.stem}_methods.csv')
+    by_year, methods = fits.attrs['by_year'], fits.attrs['methods']
+    by_year.to_csv(by_year_out, index=False)
+    methods.to_csv(methods_out, index=False)
 
     sats = 'Aqua + Terra' if args.include_terra else 'Aqua'
     print(f'\nHarmonization: MODIS {sats} vs VIIRS Suomi-NPP, {args.grid} deg cell-days')
@@ -292,7 +467,19 @@ def main(argv: list[str] | None = None) -> int:
             print(f"\n{sensor.upper()} recorded nothing on {len(days)} day(s) while the other sensor saw fires "
                   f"({days.iloc[0]:%Y-%m-%d} .. {days.iloc[-1]:%Y-%m-%d}): left out of the fit"
                   + (', filled with MODIS x factor.' if sensor == 'viirs' else '.'))
+    if len(by_year):
+        print('\nFactor fitted on each year alone (is one factor per area stable?)')
+        for area, grp in by_year.groupby('area'):
+            vals = '  '.join(f'{int(r.year)} {r.factor:.2f}' for r in grp.itertuples() if pd.notna(r.factor))
+            print(f'{area:<12} {vals}')
+    if len(methods):
+        print('\nSingle factor vs power law (median |%diff|: all / quiet / busy months; weighted |%diff|)')
+        for r in methods.itertuples():
+            print(f'{r.area:<12} {r.method:<7} {r.params:<16} {r.median_abs_pct_diff:6.1f}% '
+                  f'{r.quiet_median_abs_pct_diff:6.1f}% {r.busy_median_abs_pct_diff:6.1f}%  '
+                  f'weighted {r.weighted_abs_pct_diff:5.1f}%')
     print(f'\nWrote {len(table):,} area-months to {args.out}')
+    print(f'Wrote the per-year factors to {by_year_out} and the method comparison to {methods_out}')
     return 0
 
 

@@ -1,9 +1,13 @@
 import math
+import tempfile
 import unittest
+from pathlib import Path
 
 import pandas as pd
 
-from src.harmonize import fit_factors, harmonize, monthly_cell_days
+from src.harmonize import (_cell_days, cached_cells, compare_methods, fit_factors, fit_factors_by_year,
+                           harmonize, harmonize_cells, monthly_cell_days)
+from src.load_data import load_hotspots
 
 
 def det(date, lat=45.01, lon=-75.01, instrument='MODIS', satellite='Aqua',
@@ -188,6 +192,91 @@ class GapTests(unittest.TestCase):
         aug = table[(table.area == 'Canada') & (table.month == 8)].iloc[0]
         self.assertEqual(aug.harmonized, 13)                     # VIIRS as recorded
         self.assertEqual(aug.source, 'viirs')
+
+
+class CellTableTests(unittest.TestCase):
+    def test_cell_day_keeps_detection_count_and_max_frp(self):
+        rows = [dict(det('2022-06-01', lat=45.01 + i * 0.01), frp=f) for i, f in enumerate([3.0, 9.5, 1.0])]
+        cells = _cell_days(frame(rows), 0.1, False)
+        self.assertEqual(len(cells), 1)
+        self.assertEqual(int(cells.detections.iloc[0]), 3)
+        self.assertEqual(float(cells.frp_max.iloc[0]), 9.5)
+
+
+class StabilityAndMethodTests(unittest.TestCase):
+    def wide(self, modis, viirs, years):
+        return pd.DataFrame({'area': 'Canada', 'year': years, 'month': [1 + i % 12 for i in range(len(years))],
+                             'modis_cell_days': modis, 'viirs_cell_days': viirs})
+
+    def test_factor_by_year_shows_a_drifting_ratio(self):
+        modis = [10.0 + i for i in range(24)]
+        viirs = [m * (2.0 if i < 12 else 3.0) for i, m in enumerate(modis)]
+        by_year = fit_factors_by_year(self.wide(modis, viirs, [2012] * 12 + [2013] * 12)).set_index('year')
+        self.assertAlmostEqual(by_year.loc[2012, 'factor'], 2.0, places=9)
+        self.assertAlmostEqual(by_year.loc[2013, 'factor'], 3.0, places=9)
+
+    def test_power_law_recovered_and_beats_factor_on_quiet_months(self):
+        modis = [float(m) for m in (2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377)]
+        viirs = [6.0 * m ** 0.8 for m in modis]
+        methods = compare_methods(self.wide(modis, viirs, [2012] * 12)).set_index('method')
+        self.assertEqual(methods.loc['power', 'params'], 'a 6.00, b 0.80')
+        self.assertAlmostEqual(methods.loc['power', 'median_abs_pct_diff'], 0.0, places=6)
+        self.assertLess(methods.loc['power', 'quiet_median_abs_pct_diff'],
+                        methods.loc['factor', 'quiet_median_abs_pct_diff'])
+
+    def test_power_law_predicts_zero_when_modis_is_zero(self):
+        modis = [0.0, 4.0, 8.0, 16.0, 32.0]
+        viirs = [5.0, 8.0, 16.0, 32.0, 64.0]
+        methods = compare_methods(self.wide(modis, viirs, [2012] * 5)).set_index('method')
+        # the MODIS-0 month is 100% off for the power law (predicts 0); the others are exact
+        self.assertAlmostEqual(methods.loc['power', 'weighted_abs_pct_diff'], 5 / 125 * 100, places=6)
+
+    def test_harmonize_exposes_by_year_and_methods(self):
+        _, fits = harmonize(frame(overlap_year()))
+        self.assertEqual(set(fits.attrs['by_year'].area), {'Canada', 'Argentina'})
+        self.assertIn('factor', set(fits.attrs['methods'].method))
+
+
+class CacheTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name)
+
+    def write_csvs(self):
+        modis, viirs = [], []
+        for m in range(1, 13):
+            d = f'2022-{m:02d}-01'
+            modis.append(dict(latitude=45.05, longitude=-75.05, acq_date=d, instrument='MODIS',
+                              satellite='Aqua', confidence='80', type=0, frp=5.0))
+            for k in range(3):
+                viirs.append(dict(latitude=46.05 + k, longitude=-75.05, acq_date=d, instrument='VIIRS',
+                                  satellite='N', confidence='n', type=0, frp=2.0))
+        paths = [self.root / 'modis_2022_Canada.csv', self.root / 'viirs-snpp_2022_Canada.csv']
+        pd.DataFrame(modis).to_csv(paths[0], index=False)
+        pd.DataFrame(viirs).to_csv(paths[1], index=False)
+        return paths
+
+    def test_cache_is_reused_and_matches_the_in_memory_result(self):
+        paths = self.write_csvs()
+        cache = self.root / 'cells'
+        cells, coverage, rebuilt = cached_cells(paths, cache_dir=cache)
+        self.assertEqual(rebuilt, 2)
+        cells2, coverage2, rebuilt2 = cached_cells(paths, cache_dir=cache)
+        self.assertEqual(rebuilt2, 0)
+        cached_table, cached_fits = harmonize_cells(cells2, coverage2)
+        table, fits = harmonize(load_hotspots(paths, verbose=False))
+        pd.testing.assert_frame_equal(cached_table, table)
+        self.assertAlmostEqual(cached_fits.factor.iloc[0], 3.0, places=9)
+
+    def test_changed_file_or_grid_is_read_again(self):
+        paths = self.write_csvs()
+        cache = self.root / 'cells'
+        cached_cells(paths, cache_dir=cache)
+        with paths[0].open('a', encoding='utf-8') as f:
+            f.write('45.15,-75.05,2022-06-02,MODIS,Aqua,80,0,1.0\n')
+        self.assertEqual(cached_cells(paths, cache_dir=cache)[2], 1)
+        self.assertEqual(cached_cells(paths, grid=0.25, cache_dir=cache)[2], 2)
 
 
 if __name__ == '__main__':
