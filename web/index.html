@@ -21,7 +21,6 @@
   <a class="logo" href="#home" aria-label="FireCal home"><span class="brandicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M13 2c1 6-5 6-3 11 1-2 3-3 4-5 4 4 6 7 3 11-3 4-11 3-12-2C3 11 9 8 8 5c2 1 2 3 2 3s3-3 3-6Z"/></svg></span>FireCal<span style="color:var(--accent)">.</span></a>
   <nav aria-label="Main navigation">
     <button id="home-nav" class="active" data-page="home">Home</button>
-    <button id="report-nav" data-page="report">Report a fire</button>
   </nav>
   <div class="header-end"><span class="header-note">NASA FIRMS · MODIS + VIIRS</span><button class="iconbtn" id="theme" aria-label="Switch to light mode" title="Toggle colour theme">☼</button></div>
 </header>
@@ -43,15 +42,14 @@ python -m src.serve</code></pre>
   <!-- Globe -->
   <div class="heading">
     <div><p class="eyebrow">A clearer view of a changing landscape</p><h1>Fire intelligence, in focus.</h1><p class="sub">A world in view. Move through time to explore fire activity, one day at a time.</p></div>
-    <button class="outline" data-page="report"><span style="color:var(--orange)">＋</span> Report a fire</button>
   </div>
   <div class="workspace">
     <aside class="filters">
       <p class="section-label">Explore the globe</p>
       <div class="segmented" role="group" aria-label="Globe mode">
-        <button type="button" id="live-mode" data-mode="live" aria-pressed="false">● Live view</button>
         <button type="button" id="past-mode" data-mode="past" class="selected" aria-pressed="true">Past data</button>
-        <button type="button" id="outlook-mode" data-mode="outlook" aria-pressed="false">Predictions</button>
+        <button type="button" id="live-mode" data-mode="live" aria-pressed="false">Live data</button>
+        <button type="button" id="outlook-mode" data-mode="outlook" aria-pressed="false">Predictive data</button>
       </div>
       <label for="region">Area of interest</label>
       <select id="region"><option>Canada</option><option>Argentina</option></select>
@@ -91,7 +89,7 @@ python -m src.serve</code></pre>
       <div id="empty-map" class="map-empty" hidden></div>
       <div id="live-panel" class="live-announce" role="status" hidden>
         <span class="dot live-dot"></span>
-        <div><strong>Live view is coming soon</strong><span>Near-real-time NASA FIRMS hotspots from the last 24 hours will appear on this globe.</span></div>
+        <div><strong id="mode-panel-title">Live data is coming soon</strong><span id="mode-panel-description">Near-real-time NASA FIRMS hotspots from the last 24 hours will appear on this globe.</span></div>
         <button type="button" class="linkbtn" id="live-back">See past data →</button>
       </div>
       <div class="timeline season-strip" id="season-strip" hidden>
@@ -168,66 +166,12 @@ python -m src.serve</code></pre>
       <article class="card"><div class="card-top">Peak month</div><div class="card-value" id="season-peak">—</div></article>
       <article class="card"><div class="card-top">Season ends</div><div class="card-value" id="season-end">—</div></article>
     </div>
-    <p id="season-note" class="helper"></p>
-    <div class="calendar-layout month-layout">
-      <div>
-        <p class="section-label">Month by year · harmonized fire cell-days</p>
-        <div id="month-grid" class="month-grid" aria-label="Harmonized monthly fire activity by year"></div>
-      </div>
-      <aside class="calendar-explainer">
-        <p class="section-label">ONE RECORD, TWO SATELLITES</p>
-        <h3>MODIS and VIIRS, on one scale.</h3>
-        <p>Each cell counts fire cell-days: 0.1° grid cells with at least one detection that day. VIIRS sees more small fires than MODIS, so MODIS is scaled to match where the two overlap. Click a month to open it above.</p>
-        <div class="heat-legend" id="month-legend"></div>
-        <div class="source-note"><strong>How it was harmonized.</strong><br><span id="fit-note"></span></div>
-      </aside>
-    </div>
+    <div class="year-grid-heading"><div><p class="section-label">THE SHAPE OF THE SEASON</p><h3>Watch the year unfold</h3><p class="helper">Compare each year with the historical average on a fixed vertical scale.</p></div><label class="curve-year-control" for="curve-year">Explore a year<select id="curve-year" aria-label="Seasonal curve year"></select></label></div>
+    <div class="curve-legend"><span><i class="curve-key selected-key"></i> Selected year</span><span><i class="curve-key average-key"></i><span id="curve-average-label">Historical average</span></span><span><i class="season-key"></i> Typical fire season</span></div>
+    <p class="curve-unit">HARMONIZED FIRE CELL-DAYS</p><div id="season-curve" class="season-curve"></div>
+    <div class="curve-notes"><p id="curve-peak"></p><p id="month-detail" class="month-detail"></p></div><p class="helper curve-help">Hover or focus a point for details. Select a point to explore that month on the globe. Missing months appear as gaps.</p>
+    <details class="season-method"><summary>About this data and the season estimate <span aria-hidden="true">＋</span></summary><div class="method-content"><p>Each cell counts harmonized fire cell-days: 0.1° grid cells with at least one detection on a day. The dashed line averages each calendar month across complete years, including the selected year when complete. Shading marks the estimated typical fire season. These are historical observations, not forecasts.</p><p id="season-note" class="helper"></p><p id="fit-note" class="helper"></p></div></details>
   </section>
-</section>
-
-<!-- Report a fire: layout only, nothing is submitted or saved -->
-<section id="report-page" hidden>
-  <div class="heading">
-    <div><p class="eyebrow">Awareness starts on the ground</p><h1>See something. Share it.</h1><p class="sub">Help build a clearer picture with a community fire observation.</p></div>
-    <span class="tag">COMING SOON · NOT AN EMERGENCY SERVICE</span>
-  </div>
-  <div class="report-layout">
-    <form id="report-form" class="report-form" novalidate><fieldset disabled class="report-fieldset">
-      <h2 class="form-section"><span class="step">01</span> Where and when</h2>
-      <div class="field">
-        <label>Observation location</label>
-        <p class="helper">Enter the coordinates of what you saw.</p>
-        <div class="form-grid">
-          <div><label for="latitude">Latitude</label><input type="number" id="latitude" min="-90" max="90" step="any" placeholder="e.g. 49.2827"></div>
-          <div><label for="longitude">Longitude</label><input type="number" id="longitude" min="-180" max="180" step="any" placeholder="e.g. -123.1207"></div>
-        </div>
-      </div>
-      <div class="form-grid">
-        <div class="field"><label for="observed-at">Local observation time</label><input type="datetime-local" id="observed-at"></div>
-        <div class="field"><label for="observation">What do you see?</label><select id="observation"><option>Visible flames</option><option>Smoke plume</option><option>Smouldering vegetation</option><option>Other observation</option></select></div>
-      </div>
-      <div class="field"><label for="description">Additional details</label><textarea id="description" rows="3" maxlength="2000" placeholder="Describe the smoke, nearby landmarks, or other useful details…"></textarea></div>
-      <hr class="divider">
-      <h2 class="form-section"><span class="step">02</span> Add a photo</h2>
-      <label class="upload">↑ &nbsp; A picture can add important context.<br><small>Optional · JPG, PNG or WebP · up to 10 MB</small><input type="file" id="photo" accept="image/jpeg,image/png,image/webp"></label>
-      <hr class="divider">
-      <h2 class="form-section"><span class="step">03</span> About the reporter</h2>
-      <div class="form-grid">
-        <div class="field"><label for="reporter-name">Name</label><input id="reporter-name" maxlength="100" placeholder="Your name"></div>
-        <div class="field"><label for="reporter-email">Email</label><input id="reporter-email" type="email" placeholder="you@example.com"></div>
-        <div class="field full"><label for="reporter-phone">Phone · optional</label><input id="reporter-phone" type="tel" placeholder="Contact number"></div>
-      </div>
-      <label class="check-label"><input type="checkbox" id="acknowledge"><span>I understand FireCal does not alert emergency responders.</span></label>
-      <button class="primary" type="submit" style="width:100%">Reporting is coming soon</button>
-      </fieldset>
-      <p class="helper report-note">Community reports are the next step for FireCal. This form is a preview and sends nothing.</p>
-    </form>
-    <aside class="report-aside">
-      <div class="notice"><h3>Safety comes first.</h3><p>If there is immediate danger, contact local emergency services directly. FireCal does not alert a fire service.</p><p>Observe from a safe distance. Never approach a fire to take a photograph.</p></div>
-      <div class="aside-card"><h3>A little context goes a long way.</h3><ol><li>Check your observation location.</li><li>Describe what you can see safely.</li><li>Add a photo, if you have one.</li></ol></div>
-      <div class="aside-card"><h3>Your information, your control.</h3><p>When reporting opens, you choose what to share. Today this page sends nothing anywhere.</p></div>
-    </aside>
-  </div>
 </section>
 
 <footer><span><strong>FireCal.</strong> &nbsp; Team Lanesra · NASA Space Apps Challenge</span><span id="footer-data">Data: NASA FIRMS MODIS + VIIRS · Hotspots show fire activity, not fire danger</span></footer>

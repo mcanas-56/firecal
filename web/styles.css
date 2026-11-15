@@ -72,40 +72,11 @@ input[type=date]{font-size:12px}
 .card-foot{font-size:11px;color:var(--muted);margin:0}
 .tag{border:1px solid var(--line);padding:4px 7px;border-radius:4px;font-size:9px;letter-spacing:.7px;color:var(--muted)}
 footer{display:flex;justify-content:space-between;border-top:1px solid var(--line);margin-top:29px;padding-top:20px;font-size:10px;color:var(--muted);gap:20px}
-.report-layout{display:grid;grid-template-columns:minmax(0,1fr) 310px;gap:28px;max-width:1100px}
-.report-form{background:var(--panel);border:1px solid var(--line);padding:28px;border-radius:12px}
-.form-section{font:500 19px 'Space Grotesk',system-ui,-apple-system,'Segoe UI',sans-serif;margin:0 0 19px}
-.step{font-size:11px;color:var(--muted);padding-right:12px}
-.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
-.field{margin-bottom:18px}
-.field input,.field textarea,.field select{margin:0}
-.full{grid-column:1/-1}
-.auto-label{display:flex;justify-content:space-between;align-items:center;gap:10px}
 .linkbtn{color:var(--accent);background:transparent;border:0;font-size:11px;padding:0}
 [data-theme=light] .linkbtn{color:#476b21}
-.upload{position:relative;border:1px dashed var(--muted);padding:23px;text-align:center;border-radius:7px;color:var(--muted);cursor:pointer;display:block}
-.upload input{margin-top:12px;font-size:11px;padding:8px}
-#photo-preview{width:100%;max-height:220px;object-fit:contain;margin-top:12px;border-radius:6px}
-.notice{border-left:2px solid var(--orange);padding:3px 0 3px 16px;margin-bottom:28px}
-.notice h3{font:500 19px 'Space Grotesk',system-ui,-apple-system,'Segoe UI',sans-serif;margin:0 0 12px}
-.notice p{font-size:12px;color:var(--muted)}
-.aside-card{border:1px solid var(--line);border-radius:9px;padding:21px;margin:20px 0;background:var(--panel)}
-.aside-card h3{font-size:13px;margin:0 0 12px}
-.aside-card p,.aside-card li{font-size:12px;color:var(--muted);line-height:1.8}
-.aside-card ol{padding-left:18px}
-.check-label{display:flex;gap:10px;align-items:flex-start;font-size:11px;line-height:1.6;margin:18px 0}
-.check-label input{width:16px;margin-top:2px;accent-color:var(--accent)}
-.form-status{font-size:12px;line-height:1.6;color:var(--orange);margin:10px 0}
-.success{padding:40px;background:var(--panel);border:1px solid var(--line);border-radius:12px;max-width:700px}
-.success h2{font:500 29px 'Space Grotesk',system-ui,-apple-system,'Segoe UI',sans-serif}
-.success p{color:var(--muted)}
-.success-mark{width:47px;height:47px;border-radius:50%;background:var(--accent);color:var(--ink);display:grid;place-items:center;font-size:24px}
-.success dl{display:grid;grid-template-columns:120px 1fr;gap:12px;font-size:12px}
-.success dt{color:var(--muted)}
-.success dd{margin:0;overflow-wrap:anywhere}
 .hidden,[hidden]{display:none!important}
-@media(max-width:900px){header{padding:0 22px;height:73px}main{padding:28px 22px}.header-note{display:none}nav{gap:20px}.workspace{grid-template-columns:240px 1fr}.filters{padding:20px 17px}.map-wrap,#map{min-height:540px}.report-layout{grid-template-columns:1fr}.report-aside{display:grid;grid-template-columns:1fr 1fr;gap:20px}.cards{gap:9px}.card{padding:17px}}
-@media(max-width:620px){header{gap:12px;padding:0 15px}.logo{font-size:22px;gap:7px}.brandicon{width:30px;height:34px}.header-end{gap:0}nav{gap:13px}nav button{font-size:11px}.iconbtn{width:32px;height:32px}.heading{align-items:flex-start;flex-direction:column}h1{font-size:34px}.workspace{display:flex;flex-direction:column}.filters{border-right:0;border-bottom:1px solid var(--line)}.filters .divider,.filters .toggle-row,.filters .source-note,.filters #live-note,.filters>.section-label:not(:first-child){display:none}.segmented{margin-bottom:15px}.filters select{margin-bottom:12px}.map-wrap,#map{min-height:390px;height:390px}.map-legend{gap:9px;left:12px;bottom:28px;font-size:9px}.map-badge{left:12px;top:12px;font-size:10px}.cards{grid-template-columns:1fr}.card{display:grid;grid-template-columns:1fr auto;align-items:center;gap:7px}.card-value{margin:0;font-size:27px;grid-column:2;grid-row:1/3}.card-foot{grid-row:2}.tag{display:none}.under-map{align-items:flex-start;font-size:10px}.report-form{padding:20px}.form-grid{grid-template-columns:1fr;gap:0}.report-aside{display:block}.success{padding:24px}footer{flex-direction:column;gap:8px}.map-legend b{display:none}}
+@media(max-width:900px){header{padding:0 22px;height:73px}main{padding:28px 22px}.header-note{display:none}nav{gap:20px}.workspace{grid-template-columns:240px 1fr}.filters{padding:20px 17px}.map-wrap,#map{min-height:540px}.cards{gap:9px}.card{padding:17px}}
+@media(max-width:620px){header{gap:12px;padding:0 15px}.logo{font-size:22px;gap:7px}.brandicon{width:30px;height:34px}.header-end{gap:0}nav{gap:13px}nav button{font-size:11px}.iconbtn{width:32px;height:32px}.heading{align-items:flex-start;flex-direction:column}h1{font-size:34px}.workspace{display:flex;flex-direction:column}.filters{border-right:0;border-bottom:1px solid var(--line)}.filters .divider,.filters .toggle-row,.filters .source-note,.filters #live-note,.filters>.section-label:not(:first-child){display:none}.segmented{margin-bottom:15px}.filters select{margin-bottom:12px}.map-wrap,#map{min-height:390px;height:390px}.map-legend{gap:9px;left:12px;bottom:28px;font-size:9px}.map-badge{left:12px;top:12px;font-size:10px}.cards{grid-template-columns:1fr}.card{display:grid;grid-template-columns:1fr auto;align-items:center;gap:7px}.card-value{margin:0;font-size:27px;grid-column:2;grid-row:1/3}.card-foot{grid-row:2}.tag{display:none}.under-map{align-items:flex-start;font-size:10px}footer{flex-direction:column;gap:8px}.map-legend b{display:none}}
 #map{min-height:650px;height:650px;background:#14211b;position:relative}
 #globe{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
 #globe:active{cursor:grabbing}
@@ -185,7 +156,7 @@ footer{display:flex;justify-content:space-between;border-top:1px solid var(--lin
 @media(max-width:620px){.timeline .time-toolbar{flex-direction:row;align-items:center}.timeline-heading .section-label{font-size:9px}.map-legend{bottom:198px}.calendar-top h2{font-size:27px}}
 
 /* T-05 additions */
-.report-note{font-size:12px;color:var(--muted);margin:10px 0 0;text-align:center}
+
 
 /* Real-app additions: area switch, no-data notice, season and month x year calendar */
 .calendar-top-end{display:flex;flex-direction:column;align-items:flex-end;gap:10px}
@@ -209,8 +180,8 @@ footer{display:flex;justify-content:space-between;border-top:1px solid var(--lin
 .mg-cell.zero{color:#d0ddd3}
 .mg-cell.missing{background:repeating-linear-gradient(45deg,var(--raised),var(--raised) 3px,var(--line) 3px,var(--line) 5px)!important}
 .mg-cell.current{outline:2px solid var(--accent);outline-offset:1px;border-color:var(--ink)}
-.report-fieldset{border:0;margin:0;padding:0;min-width:0}
-.report-fieldset:disabled .primary{cursor:not-allowed;opacity:.75}
+
+
 @media(max-width:620px){.calendar-top{align-items:flex-start;flex-direction:column;gap:14px}.calendar-top-end{align-items:flex-start;width:100%}.area-switch{width:100%}.area-switch .scale-option{flex:1}.season-cards{grid-template-columns:1fr;gap:9px}.season-cards .card{display:flex;justify-content:space-between;align-items:center}.season-cards .card-value{margin:0;font-size:24px}.mg-row{grid-template-columns:30px repeat(12,minmax(16px,1fr));gap:2px}.mg-cell{height:32px;font-size:0;border-radius:4px}.mg-head span{font-size:7px}.mg-year{font-size:10px}}
 .no-data-mode #home-page{display:none!important}
 
@@ -261,3 +232,17 @@ footer{display:flex;justify-content:space-between;border-top:1px solid var(--lin
 .season-key .last{background:var(--orange);border-radius:50%;width:7px;height:7px}
 .season-key .ringkey{border:1.5px solid #1f6f9a;border-radius:50%;width:9px;height:9px}
 [data-theme="dark"] .season-key .ringkey{border-color:#8fdcff}
+
+/* Design exploration: spacious yearly comparison with detail on demand. */
+.season-panel{padding:32px}.season-panel>.calendar-top{margin-bottom:28px}.season-cards{gap:18px;margin-bottom:35px}.season-cards .card{background:transparent;box-shadow:none;padding:20px 24px}.season-cards .card-value{font-size:30px;margin-top:13px}.season-cards .card-top{font-size:11px}.year-grid-heading{display:flex;align-items:center;justify-content:space-between;gap:20px;border-top:1px solid var(--line);padding-top:27px;margin-bottom:25px}.year-grid-heading .section-label{font-size:9px;margin-bottom:10px}.year-grid-heading h3{font:500 23px 'Space Grotesk',sans-serif;margin:0 0 7px;letter-spacing:-.5px}.year-grid-heading .helper{margin:0}.values-control{display:flex;align-items:center;gap:9px;white-space:nowrap;font-size:11px;margin:0;color:var(--muted)}.values-control input{width:15px;height:15px;accent-color:var(--accent)}.year-grid-scroll{overflow-x:auto;padding:4px 3px 10px}.month-grid{gap:12px;overflow:visible;min-width:700px}.mg-row{grid-template-columns:52px repeat(12,minmax(42px,1fr));gap:10px}.mg-head span{font-size:11px;padding-bottom:12px}.mg-head span.in-season{border-bottom-color:var(--line);color:var(--text)}.mg-year{font-size:13px;color:var(--text)}.mg-cell{height:42px;border-radius:5px;border-width:1px}.mg-value{opacity:0;font-size:10px;transition:opacity .15s}.show-values .mg-value,.mg-cell:hover .mg-value,.mg-cell:focus-visible .mg-value{opacity:1}.mg-cell.current{outline-width:1px;outline-offset:3px}.year-grid-footer{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;padding:17px 0 24px}.month-detail{font-size:11px;color:var(--muted);margin:0;min-height:16px}.year-grid-footer .heat-legend{display:flex;flex-wrap:wrap;gap:12px;margin:0}.year-grid-footer .heat-legend span{font-size:10px}.year-grid-footer .heat-legend i{width:9px;height:9px}.season-method{border-top:1px solid var(--line);padding-top:20px}.season-method summary{list-style:none;cursor:pointer;font-size:12px;color:var(--muted);display:flex;justify-content:space-between;gap:20px}.season-method summary::-webkit-details-marker{display:none}.season-method[open] summary{color:var(--text)}.method-content{max-width:850px;padding-top:14px;font-size:12px;color:var(--muted);line-height:1.8}#season-note{margin:10px 0}.method-content #fit-note{line-height:1.8}@media(max-width:620px){.season-panel{padding:22px 18px}.season-cards{gap:0;margin-bottom:25px}.season-cards .card{border:0;border-radius:0;border-bottom:1px solid var(--line);padding:17px 0}.season-cards .card-value{font-size:24px}.year-grid-heading{padding-top:22px;align-items:flex-start;flex-direction:column;gap:18px}.mg-row{grid-template-columns:45px repeat(12,minmax(40px,1fr));gap:9px}.mg-cell{height:38px}.mg-head span{font-size:10px}.year-grid-footer{gap:19px}.year-grid-heading h3{font-size:22px}}
+
+@media(min-width:621px){.month-grid{min-width:620px}.mg-row{grid-template-columns:44px repeat(12,minmax(34px,1fr));gap:8px}}
+
+/* Alternative design: one seasonal curve rather than a dense year-by-month grid. */
+.curve-year-control{font-size:10px;color:var(--muted);margin:0;min-width:135px}.curve-year-control select{margin:7px 0 0;padding:9px 12px;font-size:14px;background:var(--raised)}.curve-legend{display:flex;align-items:center;flex-wrap:wrap;gap:20px;color:var(--muted);font-size:10px;margin-bottom:23px}.curve-legend>span{display:flex;align-items:center;gap:8px}.curve-key{width:22px;display:inline-block;border-top:2px solid var(--accent)}.average-key{border-color:var(--muted);border-top-style:dashed}.curve-legend .season-key{display:inline-block;width:12px;height:12px;background:var(--accent);opacity:.12;border:1px solid var(--accent);margin:0}.curve-unit{font-size:8px;letter-spacing:1px;color:var(--muted);margin:0 0 8px}.season-curve svg{width:100%;display:block;overflow:visible}.curve-season-band{fill:var(--accent);opacity:.045}.curve-y-axis .tick line{stroke:var(--line);stroke-dasharray:3 5}.curve-y-axis text,.curve-x-axis text{fill:var(--muted);font:10px 'DM Sans',sans-serif}.curve-y-axis text{dx:-8}.curve-area{fill:var(--accent);opacity:.055}.curve-selected{fill:none;stroke:var(--accent);stroke-width:2.5;stroke-linejoin:round}.curve-average{fill:none;stroke:var(--muted);stroke-width:1.8;stroke-dasharray:5 6;opacity:.75}.curve-point{fill:var(--panel);stroke:var(--accent);stroke-width:2;cursor:pointer;transition:r .1s}.curve-point:hover,.curve-point:focus,.curve-point.is-current{fill:var(--accent);r:7;outline:none}.curve-notes{border-top:1px solid var(--line);margin-top:16px;padding-top:16px;display:flex;flex-direction:column;gap:8px}.curve-notes p{margin:0;font-size:11px;line-height:1.6}.curve-notes #curve-peak{color:var(--text)}.curve-help{margin:15px 0 25px;font-size:10px}@media(max-width:620px){.curve-year-control{width:100%;display:flex;align-items:center;justify-content:space-between;gap:20px}.curve-year-control select{width:110px;margin:0}.curve-legend{gap:13px;font-size:9px}.season-curve{margin-left:-10px;margin-right:-8px}.curve-notes{margin-top:10px}.curve-x-axis text{font-size:11px}.curve-y-axis text{font-size:11px}}
+
+/* Ordered data-mode navigation. */
+.segmented button{font-size:10px;padding:10px 4px;white-space:nowrap}
+.predictive-note{padding:14px;margin-bottom:20px;border:1px solid var(--line);border-radius:7px;background:var(--raised);font-size:12px;line-height:1.6}
+.predictive-note p{color:var(--muted);margin-bottom:0}
+@media(max-width:620px){.segmented button{font-size:12px;padding:11px 6px}}
