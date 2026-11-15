@@ -1,6 +1,6 @@
 // Interactive globe: D3 orthographic projection on a canvas with Natural Earth land.
 // Drag to rotate, wheel or +/− to zoom, reset button; hotspots coloured by radiative
-// power (FRP) with a hover tooltip. Ported from the prototype. In Outlook mode
+// power (FRP) with a hover tooltip. Ported from the prototype. In the Predictions tab
 // (US-18) points are outlook cells coloured by their chance of fire, with the fires that
 // actually happened drawn as rings on top (back-tests).
 /* global d3 */
@@ -12,7 +12,7 @@ const AREA_VIEW = { Canada: { lon: -100, lat: 38 }, Argentina: { lon: -63, lat: 
 let canvas, ctx;
 let landGeo = null;
 let points = [];                 // [lat, lon, frp, date] or, for outlooks, [lat, lon, chance, month]
-let pointKind = 'frp';           // 'frp' | 'probability'
+let pointKind = 'frp';           // 'frp' | 'probability' | 'recurrence' (share of years burned, label in p[3])
 let overlay = [];                // [lat, lon] rings: fires that happened (back-tests)
 let rotation = { ...AREA_VIEW.Canada };
 let zoom = 1;
@@ -22,6 +22,7 @@ let lastPointer = null;
 export function frpColour(frp) { return frp > 80 ? '#ff704c' : frp > 20 ? '#ffa45e' : '#f7d68c'; }
 
 export function chanceColour(p) { return p >= 0.5 ? '#ff704c' : p >= 0.2 ? '#ffa45e' : '#f7d68c'; }
+export function recurrenceColour(share) { return share >= 0.5 ? '#ff704c' : share >= 0.25 ? '#ffa45e' : '#f7d68c'; }
 
 // Every call replaces the points and the ring overlay; past and live views pass no options.
 export function setPoints(pts, { kind = 'frp', rings = [] } = {}) {
@@ -126,12 +127,13 @@ export function draw() {
   for (let lat = -60; lat <= 60; lat += 30) line(Array.from({ length: 181 }, (_, i) => [-180 + i * 2, lat]), grid);
   for (let lon = -180; lon < 180; lon += 30) line(Array.from({ length: 91 }, (_, i) => [lon, -90 + i * 2]), grid);
 
-  const chance = pointKind === 'probability';
+  const share = pointKind !== 'frp';   // a 0-1 chance or share of years, not MW
   for (const p of points) {
     const v = project(p[1], p[0]);
     if (v.z <= 0.02) continue;
-    const colour = chance ? chanceColour(p[2]) : frpColour(p[2]);
-    const size = chance ? p[2] * 260 : p[2];   // same marker sizes: 50% chance ~ 130 MW
+    const colour = pointKind === 'probability' ? chanceColour(p[2])
+      : pointKind === 'recurrence' ? recurrenceColour(p[2]) : frpColour(p[2]);
+    const size = share ? p[2] * 260 : p[2];   // same marker sizes: 50% ~ 130 MW
     ctx.beginPath();
     ctx.arc(v.x, v.y, 3.2 + Math.min(size / 130, 2), 0, Math.PI * 2);
     ctx.fillStyle = colour + '30';
@@ -180,7 +182,9 @@ function hover(e) {
   }
   const tip = $('globe-tooltip');
   if (closest) {
-    tip.textContent = pointKind === 'probability'
+    tip.textContent = pointKind === 'recurrence'
+      ? `${closest[3]} · ${closest[0].toFixed(2)}°, ${closest[1].toFixed(2)}°`
+      : pointKind === 'probability'
       ? `${closest[3]} · ${closest[0].toFixed(2)}°, ${closest[1].toFixed(2)}° · ${Math.round(closest[2] * 100)}% chance of fire`
       : `${closest[3] || state.date} · ${closest[0].toFixed(3)}°, ${closest[1].toFixed(3)}° · ${closest[2].toFixed(1)} MW`;
     tip.hidden = false;

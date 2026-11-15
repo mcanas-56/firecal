@@ -56,7 +56,7 @@ It holds in each test year: Canada's AUC is 0.852 in 2022 and 0.850 in 2023 (bas
 
 ## In the app (US-18)
 
-The globe's **Outlook** mode shows these outlooks from `outlook.json` (`src/outlook.py`):
+The globe's **Predictions** tab shows these outlooks from `outlook.json` (`src/outlook.py`), plus a typical-month map (how many years each cell burned in a calendar month) and the Predictions strip (monthly normal, range, last year and next-month prediction):
 - **Next-month outlook:** the model refitted on every year for the month after the record ends.
 - **Back-test:** each 2022–2023 month from the tested model, with the fires that happened drawn as rings. Fires in cells it could not score count as misses.
 

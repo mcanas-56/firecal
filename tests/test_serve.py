@@ -96,6 +96,7 @@ class OfflineTests(unittest.TestCase):
         urls = set()
         for path in [WEB / 'index.html', WEB / 'styles.css', *(WEB / 'js').glob('*.js')]:
             urls |= set(re.findall(r'https?://[^\s"\')]+', path.read_text(encoding='utf-8')))
+        urls.discard('http://www.w3.org/2000/svg')   # the SVG namespace name, not a request
         hosts = {re.match(r'https?://([^/]+)', u).group(1) for u in urls}
         self.assertLessEqual(hosts, {'fonts.googleapis.com', 'fonts.gstatic.com'})
 

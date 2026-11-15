@@ -10,7 +10,7 @@ the season (US-05), then writes to data/processed/ (local, gitignored):
                           date -> area -> {total, frp, points: [[lat, lon, frp]]}
 - web/monthly.json        per area: harmonized monthly record, MODIS->VIIRS fit,
                           season summary, and which sensor the daily view uses
-- web/outlook.json        the globe's Outlook mode (US-18, src/outlook.py): next
+- web/outlook.json        the globe's Predictions tab (US-18, src/outlook.py): next
                           month's outlook, 2022-2023 back-tests and model skill
 
 Daily view: cleaned VIIRS Suomi-NPP detections where a VIIRS S-NPP file covers that

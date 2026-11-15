@@ -64,7 +64,8 @@ function renderMode() {
   $('outlook-unavailable').hidden = !outlook || ready;
   $('outlook-legend').hidden = !ready;
   $('hotspot-legend').hidden = outlook;
-  document.querySelector('.timeline').hidden = outlook;   // the time explorer is for the archive
+  $('time-explorer').hidden = outlook;   // the time explorer is for the archive
+  $('season-strip').hidden = !ready;     // the Predictions strip takes its place
 }
 
 // Stat card titles for Past data and Live view; the outlook sets its own.
@@ -78,12 +79,12 @@ function resetCards() {
 function renderOutlookMode() {
   if (outlookReady()) { renderOutlook(); return; }
   const reason = state.outlook?.status === 'unavailable' ? state.outlook.reason
-    : state.outlook ? 'No outlook for this area.' : 'Loading the outlook…';
+    : state.outlook ? 'No predictions for this area.' : 'Loading the predictions…';
   $('outlook-reason').textContent = reason;
-  $('map-label').textContent = 'OUTLOOK · NOT AVAILABLE';
+  $('map-label').textContent = 'PREDICTIONS · NOT AVAILABLE';
   for (const id of ['hotspot-count', 'window-stat', 'month-stat']) $(id).textContent = '—';
   for (const id of ['count-note', 'window-note', 'month-note']) $(id).textContent = '';
-  $('map-detail').textContent = `${state.area} · Outlook not available: ${reason}`;
+  $('map-detail').textContent = `${state.area} · Predictions not available: ${reason}`;
   $('empty-map').hidden = true;
   setPoints([]);
 }

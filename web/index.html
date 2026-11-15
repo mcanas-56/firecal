@@ -51,7 +51,7 @@ python -m src.serve</code></pre>
       <div class="segmented" role="group" aria-label="Globe mode">
         <button type="button" id="live-mode" data-mode="live" aria-pressed="false">● Live view</button>
         <button type="button" id="past-mode" data-mode="past" class="selected" aria-pressed="true">Past data</button>
-        <button type="button" id="outlook-mode" data-mode="outlook" aria-pressed="false">Outlook</button>
+        <button type="button" id="outlook-mode" data-mode="outlook" aria-pressed="false">Predictions</button>
       </div>
       <label for="region">Area of interest</label>
       <select id="region"><option>Canada</option><option>Argentina</option></select>
@@ -60,12 +60,12 @@ python -m src.serve</code></pre>
         <div class="source-note"><strong>Last 24 hours · coming soon</strong><br>Live view will show near-real-time NASA FIRMS hotspots as they are detected. Until then, Past data shows the archive.</div>
       </div>
       <div id="outlook-controls" hidden>
-        <label for="outlook-month">Outlook month</label>
+        <label for="outlook-month">Show</label>
         <select id="outlook-month"></select>
         <p class="helper" id="outlook-helper"></p>
         <div class="outlook-note" id="outlook-skill"></div>
       </div>
-      <div class="outlook-note" id="outlook-unavailable" hidden><strong>Outlook not available yet</strong><p id="outlook-reason">Loading the outlook…</p></div>
+      <div class="outlook-note" id="outlook-unavailable" hidden><strong>Predictions not available yet</strong><p id="outlook-reason">Loading the predictions…</p></div>
       <div id="date-controls">
         <label for="map-date">Observation date</label>
         <input type="date" id="map-date">
@@ -84,7 +84,7 @@ python -m src.serve</code></pre>
         <div class="globe-controls"><button id="zoom-in" aria-label="Zoom in">+</button><button id="zoom-out" aria-label="Zoom out">−</button><button id="reset-globe" aria-label="Reset globe view">⌖</button></div>
         <div id="globe-tooltip" role="status" hidden></div>
         <div class="globe-instruction">↔ &nbsp; Drag to rotate · scroll to zoom</div>
-        <div class="map-legend outlook-legend" id="outlook-legend" hidden><b>CHANCE OF FIRE</b><span><i class="dot" style="background:#f7d68c"></i> 5–20%</span><span><i class="dot" style="background:#ffa05d"></i> 20–50%</span><span><i class="dot" style="background:#f06047"></i> 50%+</span><span id="legend-rings"><i class="ring"></i> Fires that happened</span></div>
+        <div class="map-legend outlook-legend" id="outlook-legend" hidden><b id="legend-title">CHANCE OF FIRE</b><span><i class="dot" style="background:#f7d68c"></i> <span id="legend-low">5–20%</span></span><span><i class="dot" style="background:#ffa05d"></i> <span id="legend-mid">20–50%</span></span><span><i class="dot" style="background:#f06047"></i> <span id="legend-high">50%+</span></span><span id="legend-rings"><i class="ring"></i> Fires that happened</span></div>
         <div class="globe-credit">Land: Natural Earth · Hotspots: NASA FIRMS</div>
       </div>
       <div class="map-badge"><span class="dot" style="background:var(--orange)"></span><span id="map-label">ARCHIVE</span></div>
@@ -94,7 +94,12 @@ python -m src.serve</code></pre>
         <div><strong>Live view is coming soon</strong><span>Near-real-time NASA FIRMS hotspots from the last 24 hours will appear on this globe.</span></div>
         <button type="button" class="linkbtn" id="live-back">See past data →</button>
       </div>
-      <div class="timeline">
+      <div class="timeline season-strip" id="season-strip" hidden>
+        <div class="timeline-heading"><span class="section-label">Predictions · fire cell-days by month</span><output id="season-note"></output></div>
+        <div id="season-chart" role="group" aria-label="Predictions by month: click a month to map it"></div>
+        <div class="season-key"><span><i class="band"></i>2012–2023 range</span><span><i class="line"></i>Normal</span><span><i class="last"></i><span id="season-last-year">2023</span></span><span><i class="ringkey"></i>Next-month prediction</span></div>
+      </div>
+      <div class="timeline" id="time-explorer">
         <div class="timeline-heading"><span class="section-label">Time Explorer</span><output id="slider-date" for="date-slider"></output></div>
         <div class="time-toolbar">
           <div class="scale-switch" role="group" aria-label="Timeline scale">

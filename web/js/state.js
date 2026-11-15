@@ -8,7 +8,7 @@ export const state = {
   archive: {},          // /data/archive.json: date -> area -> {total, frp, points: [[lat, lon, frp]]}
   monthly: null,        // /data/monthly.json: per area harmonized months, fit, season, daily sensor
   outlook: null,        // /data/outlook.json: next-month outlook, back-tests, skill (US-18)
-  outlookMonth: 'forecast', // 'forecast' or a back-test month 'YYYY-MM'
+  outlookMonth: null,   // 'typical-M' (calendar month map), 'forecast' or a back-test month 'YYYY-MM'; null = the area's peak month
   archiveError: false,
   years: [],            // years found in the archive
   year: 2023,
