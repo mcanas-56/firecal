@@ -284,3 +284,15 @@ The globe's third tab, **Predictions**, is labelled *Predictions from 2012–202
 The sidebar note gives the models' test scores against the historical average. If a model had not beaten it, the map would show the average instead.
 
 The page builds `outlook.json` with the rest of its data (`src/outlook.py`, run in its own process, about 30 extra seconds). It needs the full 2012–2023 download; with fewer years, the Predictions tab says which years are missing.
+
+## Seasonal comparison view
+
+The season section compares a selected year's monthly harmonized fire cell-days with
+the historical monthly average across complete years. The vertical scale stays fixed
+across years within each area. Shading marks the estimated typical season; missing
+months remain gaps. Hover or focus a point for exact values, or select it to open
+that month on the globe. Method notes expand beneath the chart.
+
+The globe tabs appear as Past data, Live data and Predictive data. Predictive data
+uses the project's outlook module; Live data remains a coming-soon view. The fire
+reporting preview has been removed, and retired page links return to Home.

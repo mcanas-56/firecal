@@ -81,7 +81,7 @@ export function resize() {
 export function draw() {
   if (!ctx || !canvas.width) return;
   const { w, h, r, cx, cy } = size();
-  if (r <= 0) return;   // hidden (Report page, no-data notice) or too small to draw
+  if (r <= 0) return;   // hidden (no-data notice) or too small to draw
   const dark = document.documentElement.dataset.theme !== 'light';
   ctx.clearRect(0, 0, w, h);
   const bg = ctx.createRadialGradient(cx, cy, r * 0.3, cx, cy, r * 1.8);

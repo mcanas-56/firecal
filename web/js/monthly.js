@@ -45,75 +45,49 @@ function renderSeason(info) {
 }
 
 function renderGrid(info) {
-  const host = $('month-grid');
+  const host = $('season-curve');
   host.replaceChildren();
-  if (!info) return;
-  const season = new Set(info.season?.months || []);
-  const vmax = Math.max(0, ...info.months.map((m) => m.harmonized || 0));
-  const thresholds = monthThresholds(info.months.map((m) => m.harmonized));
-  const head = document.createElement('div');
-  head.className = 'mg-row mg-head';
-  head.append(document.createElement('span'));
-  MONTHS.forEach((m, i) => {
-    const el = document.createElement('span');
-    el.textContent = m;
-    if (season.has(i + 1)) { el.className = 'in-season'; el.title = 'Part of the estimated fire season'; }
-    head.append(el);
+  const yearControl = $('curve-year');
+  const years = [...new Set((info?.months || []).map(m => m.year))].sort((a,b) => b-a);
+  yearControl.replaceChildren(...years.map(y => new Option(String(y), String(y))));
+  yearControl.value = state.year;
+  if (!info || !window.d3 || !years.length) return;
+  const d3 = window.d3;
+  const valid = v => typeof v === 'number' && Number.isFinite(v) && v >= 0;
+  const byYear = new Map(years.map(y => [y, info.months.filter(m => m.year === y)]));
+  const complete = years.filter(y => byYear.get(y).length === 12 && byYear.get(y).every(m => valid(m.harmonized)));
+  const selected = Array.from({length:12}, (_,i) => {
+    const m = info.months.find(m => m.year === state.year && m.month === i+1);
+    return {month:i+1,value:valid(m?.harmonized) ? m.harmonized : null};
   });
-  host.append(head);
-
-  const byYear = {};
-  for (const m of info.months) (byYear[m.year] ||= {})[m.month] = m;
-  for (const year of Object.keys(byYear).map(Number).sort((a, b) => b - a)) {
-    const row = document.createElement('div');
-    row.className = 'mg-row';
-    const label = document.createElement('span');
-    label.className = 'mg-year';
-    label.textContent = year;
-    row.append(label);
-    for (let month = 1; month <= 12; month++) {
-      const m = byYear[year][month];
-      const v = m ? m.harmonized : null;
-      const level = monthLevel(v, thresholds);
-      const cell = document.createElement('button');
-      cell.type = 'button';
-      cell.className = 'mg-cell' + (level === -1 ? ' missing' : '') + (level === 0 ? ' zero' : '')
-        + (state.year === year && state.calMonth === month - 1 ? ' current' : '');
-      cell.dataset.year = year;
-      cell.dataset.month = month;
-      if (level !== -1) cell.style.background = COLOURS[level];
-      const short = v >= 1000 ? (Math.floor(v / 100) / 10).toFixed(1) + 'k' : fmt(v);
-      cell.textContent = level > 0 && v >= 0.05 * vmax ? short : '';
-      const source = { viirs: 'VIIRS', modis_scaled: 'MODIS × factor',
-        'viirs+modis_gap_fill': `VIIRS, ${m?.viirs_gap_days} satellite-gap days filled with MODIS × factor` }[m?.source] || 'no data';
-      const tip = `${MONTHS[month - 1]} ${year}: ${fmt(v)} harmonized fire cell-days`
-        + (m ? ` (${source}; VIIRS ${fmt(m.viirs)}, MODIS ${fmt(m.modis)})` : '')
-        + (level >= 0 ? ' · ' + NAMES[level] : '');
-      cell.title = tip;
-      cell.setAttribute('aria-label', tip);
-      const known = state.years.includes(year);
-      cell.disabled = !known;
-      cell.onclick = () => { stopPlayback(); state.scale = 'month'; setYearMonth(year, month - 1); };
-      row.append(cell);
-    }
-    host.append(row);
+  const average = selected.map(({month}) => ({month,value:complete.length ? d3.mean(complete, y => byYear.get(y).find(m => m.month === month).harmonized) : null}));
+  // A shared domain across the area's entire record keeps year comparisons stable.
+  const max = d3.max(info.months.filter(m => valid(m.harmonized)), m => m.harmonized) || 1;
+  const x = d3.scaleLinear().domain([1,12]).range([62,772]);
+  const y = d3.scaleLinear().domain([0,max*1.12]).nice(4).range([264,26]);
+  const svg = d3.select(host).append('svg').attr('viewBox','0 0 800 305').attr('role','img').attr('aria-label',`Monthly harmonized fire activity for ${state.area}, ${state.year}, compared with the mean across ${complete.length} complete years. Missing values are gaps.`);
+  svg.append('title').text(`Seasonal activity in ${state.area}: ${state.year} and historical average`);
+  const season = new Set(info.season?.months || []);
+  svg.append('g').selectAll('rect').data(selected.filter(d=>season.has(d.month))).join('rect').attr('x',d=>Math.max(62,x(d.month)-32)).attr('width',d=>Math.min(772,x(d.month)+32)-Math.max(62,x(d.month)-32)).attr('y',26).attr('height',238).attr('class','curve-season-band');
+  svg.append('g').attr('class','curve-y-axis').attr('transform','translate(62,0)').call(d3.axisLeft(y).ticks(4).tickSize(-710).tickFormat(d3.format('~s'))).call(g=>g.select('.domain').remove());
+  svg.append('g').attr('class','curve-x-axis').attr('transform','translate(0,264)').call(d3.axisBottom(x).tickValues(d3.range(1,13)).tickFormat(m=>MONTHS[m-1]).tickSize(0).tickPadding(18)).call(g=>g.select('.domain').remove());
+  const line = d3.line().defined(d=>d.value!==null).x(d=>x(d.month)).y(d=>y(d.value));
+  svg.append('path').datum(selected).attr('class','curve-area').attr('d',d3.area().defined(d=>d.value!==null).x(d=>x(d.month)).y0(y(0)).y1(d=>y(d.value)));
+  svg.append('path').datum(average).attr('class','curve-average').attr('d',line);
+  svg.append('path').datum(selected).attr('class','curve-selected').attr('d',line);
+  function describe(d) {
+    const mean = average[d.month-1].value;
+    $('month-detail').textContent = `${LONG[d.month-1]} ${state.year} · ${fmt(d.value)} fire cell-days`+(mean!==null?` · Historical average: ${fmt(mean)}`:'');
   }
-
-  const r = (x) => Math.round(x).toLocaleString();
-  const legend = [`<span><i class="missing-swatch"></i> No data</span>`, `<span><i style="background:${COLOURS[0]}"></i> 0</span>`,
-    `<span><i style="background:${COLOURS[1]}"></i> up to ${r(thresholds[0])}</span>`,
-    `<span><i style="background:${COLOURS[2]}"></i> ${r(thresholds[0])}–${r(thresholds[1])}</span>`,
-    `<span><i style="background:${COLOURS[3]}"></i> ${r(thresholds[1])}–${r(thresholds[2])}</span>`,
-    `<span><i style="background:${COLOURS[4]}"></i> over ${r(thresholds[2])}</span>`];
-  $('month-legend').innerHTML = legend.join('');
-
-  const f = info.fit || {};
-  $('fit-note').textContent = f.factor
-    ? `VIIRS ≈ ${f.factor.toFixed(2)} × MODIS for ${state.area} (R² ${f.r2?.toFixed(2)}, ${f.overlap_months} overlap months). `
-      + 'Months with VIIRS use it directly; earlier months use MODIS × factor.'
-      + (f.gap_days ? ` ${f.gap_days} days when one satellite was not recording are left out of the fit, and VIIRS gap days are filled with MODIS × factor.` : '')
-      + ' Method: docs/harmonization.md.'
-    : 'Not enough overlapping MODIS and VIIRS months to fit a factor yet.';
+  function open(d){stopPlayback();state.scale='month';setYearMonth(state.year,d.month-1);}
+  svg.append('g').selectAll('circle').data(selected.filter(d=>d.value!==null)).join('circle').attr('cx',d=>x(d.month)).attr('cy',d=>y(d.value)).attr('r',6).attr('class',d=>'curve-point'+(d.month===state.calMonth+1?' is-current':'')).attr('tabindex',0).attr('role','button').attr('aria-label',d=>`${LONG[d.month-1]} ${state.year}: ${fmt(d.value)} harmonized fire cell-days. Open this month.`).on('pointerenter',(_,d)=>describe(d)).on('focus',(_,d)=>describe(d)).on('click',(_,d)=>open(d)).on('keydown',(event,d)=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();open(d)}}).append('title').text(d=>`${LONG[d.month-1]}: ${fmt(d.value)} fire cell-days`);
+  const active = selected.find(d=>d.month===state.calMonth+1);
+  describe(active);
+  const peak = selected.reduce((best,d)=>d.value!==null&&(!best||d.value>best.value)?d:best,null);
+  $('curve-peak').textContent = peak&&peak.value>0?`Busiest month in ${state.year}: ${LONG[peak.month-1]} · ${fmt(peak.value)} fire cell-days`: 'No positive activity recorded for this year.';
+  $('curve-average-label').textContent=complete.length?`Historical average · ${Math.min(...complete)}–${Math.max(...complete)} (${complete.length} complete years)`:'Historical average unavailable';
+  const f=info.fit||{};
+  $('fit-note').textContent=f.factor?`VIIRS ≈ ${f.factor.toFixed(2)} × MODIS for ${state.area}. The record uses VIIRS where available and scaled MODIS otherwise. See docs/harmonization.md.`:'Not enough overlap to fit a harmonization factor.';
 }
 
 function renderMonthly() {
@@ -124,5 +98,6 @@ function renderMonthly() {
 }
 
 export function initMonthly() {
+  $('curve-year').onchange = () => { stopPlayback(); setYearMonth(Number($('curve-year').value), state.calMonth); };
   onRender(renderMonthly);
 }
